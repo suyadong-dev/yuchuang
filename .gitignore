@@ -1,4 +1,11 @@
 HELP.md
+
+## Common ##
+将application-local.yaml 忽略
+application-local.yaml
+temp
+
+
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/

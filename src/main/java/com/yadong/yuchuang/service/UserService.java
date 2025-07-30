@@ -49,23 +49,26 @@ public interface UserService extends IService<User> {
 
     /**
      * 获取当前登录用户
-     *
-     * @param request 请求
-     * @return 当前登录用户
      */
     User getLoginUser(HttpServletRequest request);
 
     /**
      * 用户注销
-     *
-     * @param request 请求
-     * @return 用户注销是否成功
      */
     boolean userLogout(HttpServletRequest request);
 
+    /**
+     * 获取脱敏的user信息
+     */
     UserVO getUserVO(User user);
 
+    /**
+     * 获取脱敏的user列表
+     */
     List<UserVO> getUserVOList(List<User> userList);
 
+    /**
+     * 获取user封装的查询条件
+     */
     QueryWrapper getQueryWrapper(UserQueryRequest userQueryRequest);
 }
