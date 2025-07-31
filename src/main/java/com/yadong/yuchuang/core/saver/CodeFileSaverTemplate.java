@@ -3,7 +3,6 @@ package com.yadong.yuchuang.core.saver;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.text.StrFormatter;
 import cn.hutool.core.util.CharsetUtil;
-import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.yadong.yuchuang.exception.BusinessException;
 import com.yadong.yuchuang.exception.ErrorCode;
@@ -23,11 +22,11 @@ public abstract class CodeFileSaverTemplate<T> {
     private static final String FILE_SAVE_FIR = System.getProperty("user.dir") + "/temp/code_output/";
 
 
-    public File saveCode(T codeContent) {
+    public File saveCode(T codeContent, Long id) {
         // 1.校验数据
         validateCode(codeContent);
         // 2.构建唯一目录
-        String basePath = buildUniqueDir();
+        String basePath = buildUniqueDir(id);
         // 3.保存文件
         saveFiles(codeContent, basePath);
         // 4.返回文件保存的目录
@@ -58,11 +57,11 @@ public abstract class CodeFileSaverTemplate<T> {
      *
      * @return 唯一目录
      */
-    private String buildUniqueDir() {
+    private String buildUniqueDir(Long id) {
         // 获取业务类型
         String bizType = getCodeType();
         // 目录名
-        String uniqueDirName = StrFormatter.format("{}_{}", bizType, IdUtil.getSnowflakeNextIdStr());
+        String uniqueDirName = StrFormatter.format("{}_{}", bizType, id);
         // 完整的保存目录
         String dirPath = FILE_SAVE_FIR + uniqueDirName;
         // 创建目录

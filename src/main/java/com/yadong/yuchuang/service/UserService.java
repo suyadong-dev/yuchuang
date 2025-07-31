@@ -7,6 +7,7 @@ import com.yadong.yuchuang.model.entity.User;
 import com.yadong.yuchuang.model.vo.LoginUserVO;
 import com.yadong.yuchuang.model.vo.UserVO;
 import jakarta.servlet.http.HttpServletRequest;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 
@@ -26,6 +27,12 @@ public interface UserService extends IService<User> {
      */
     long userRegister(String userAccount, String userPassword, String checkPassword);
 
+    /**
+     * 获取加密密码
+     *
+     * @param userPassword 用户密码
+     * @return 加密后的密码
+     */
     String getEncryptPassword(String userPassword);
 
     /**

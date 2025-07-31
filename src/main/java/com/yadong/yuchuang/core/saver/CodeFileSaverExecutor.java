@@ -29,12 +29,12 @@ public class CodeFileSaverExecutor {
      * @param codeGenTypeEnum 业务类型
      * @return 保存的文件
      */
-    public static File executeSave(Object content, CodeGenTypeEnum codeGenTypeEnum) {
+    public static File executeSave(Object content, Long id, CodeGenTypeEnum codeGenTypeEnum) {
         return switch (codeGenTypeEnum) {
             case HTML:
-                yield htmlCodeSaver.saveCode((HtmlCodeResult) content);
+                yield htmlCodeSaver.saveCode((HtmlCodeResult) content, id);
             case MULTI_FILE:
-                yield multiFileCodeSaver.saveCode((MultiFileCodeResult) content);
+                yield multiFileCodeSaver.saveCode((MultiFileCodeResult) content, id);
             default:
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, "不支持的代码生成类型");
         };
