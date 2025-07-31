@@ -46,8 +46,8 @@ public class CodeFileSaver {
         String filePath = buildUniqueDir(CodeGenTypeEnum.MULTI_FILE.getValue()) + "/";
         // 分别保存文件
         writeToFile(filePath, "index.html", multiFileCodeResult.getHtmlCode());
-        writeToFile(filePath, "index.css", multiFileCodeResult.getCssCode());
-        writeToFile(filePath, "index.js", multiFileCodeResult.getJsCode());
+        writeToFile(filePath, "style.css", multiFileCodeResult.getCssCode());
+        writeToFile(filePath, "script.js", multiFileCodeResult.getJsCode());
     }
 
 

@@ -1,10 +1,13 @@
 package com.yadong.yuchuang.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.RandomUtil;
+import cn.hutool.core.util.StrUtil;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
+import com.yadong.yuchuang.common.AppConstant;
 import com.yadong.yuchuang.core.AiCodeGeneratorFacade;
 import com.yadong.yuchuang.exception.BusinessException;
 import com.yadong.yuchuang.exception.ErrorCode;
@@ -21,15 +24,18 @@ import com.yadong.yuchuang.service.AppService;
 import com.yadong.yuchuang.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
+import java.io.File;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppService {
     @Resource
@@ -59,6 +65,54 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         ThrowUtils.throwIf(appType == null, ErrorCode.PARAMS_ERROR, "应用类型错误");
         // 4. 生成代码
         return aiCodeGeneratorFacade.generateAndSaveCodeStream(message, appId, appType);
+    }
+
+    @Override
+    public String deployApp(Long appId, User loginUser) {
+        // 1.参数校验
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR);
+
+        // 2.查询应用是否存在
+        App app = this.getById(appId);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+
+        // 3.校验用户是否是应用的创建者
+        if (!loginUser.getId().equals(app.getUserId())) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+        }
+
+        // 4.如果没有部署标识，则生成部署标识
+        if (StrUtil.isBlank(app.getDeployKey())) {
+            app.setDeployKey(RandomUtil.randomString(6));
+        }
+
+        // 5.获取源目录和目标目录
+        String appType = app.getCodeGenType();
+        String sourceDir = AppConstant.CODE_OUTPUT_ROOT_DIR + File.separator + appType + "_" + app.getId();
+        if (!FileUtil.exist(sourceDir) || !FileUtil.isDirectory(sourceDir)) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "应用代码不存在，请先生成代码");
+        }
+        String targetDir = AppConstant.CODE_DEPLOY_ROOT_DIR + File.separator + app.getDeployKey();
+        // 6.拷贝代码
+        try {
+            FileUtil.copyContent(new File(sourceDir), new File(targetDir), true);
+        } catch (Exception e) {
+            log.info("拷贝失败：{}", e.getMessage());
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "部署失败");
+        }
+
+        // 7.更新数据库
+        App newApp = App.builder()
+                .id(app.getId())
+                .deployKey(app.getDeployKey())
+                .deployedTime(LocalDateTime.now())
+                .editTime(LocalDateTime.now())
+                .build();
+        this.getMapper().update(newApp);
+
+        // 8.返回可访问的url路径
+        return AppConstant.CODE_DEPLOY_HOST + "/" + app.getDeployKey();
     }
 
     /**

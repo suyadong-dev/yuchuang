@@ -23,3 +23,9 @@ knife4j:
   enable: true
   setting:
     language: zh_cn
+
+# 日志打印级别设置
+logging:
+  level:
+    root: INFO
+

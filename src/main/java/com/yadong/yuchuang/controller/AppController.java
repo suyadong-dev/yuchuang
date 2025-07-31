@@ -1,5 +1,6 @@
 package com.yadong.yuchuang.controller;
 
+import cn.hutool.json.JSONUtil;
 import com.mybatisflex.core.paginate.Page;
 import com.yadong.yuchuang.annonation.AuthCheck;
 import com.yadong.yuchuang.common.BaseResponse;
@@ -16,8 +17,12 @@ import com.yadong.yuchuang.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
+
+import java.util.HashMap;
+import java.util.Map;
 
 
 @RestController
@@ -31,15 +36,49 @@ public class AppController {
     private UserService userService;
 
     @GetMapping(value = "/chat/gen/code", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<String> chatToGenCode(@RequestParam Long appId, @RequestParam String message,
-                                      HttpServletRequest request) {
+    public Flux<ServerSentEvent<String>> chatToGenCode(
+            @RequestParam Long appId,
+            @RequestParam String message,
+            HttpServletRequest request) {
         // 1.参数校验
         if (appId <= 0 || message.length() < 5) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         // 2.获取当前登录用户
         User loginUser = userService.getLoginUser(request);
-        return appService.chatToGenCode(appId, message, loginUser);
+        // 3.调用服务并转换为 ServerSentEvent
+        Flux<ServerSentEvent<String>> dataStream = appService.chatToGenCode(appId, message, loginUser)
+                .map(data -> {
+                    Map<String, String> wrapper = new HashMap<>();
+                    wrapper.put("d", data);
+                    return ServerSentEvent.<String>builder()
+                            .event("code-generation")
+                            .data(JSONUtil.toJsonStr(wrapper))
+                            .build();
+                });
+        // 4.创建完成事件
+        ServerSentEvent<String> completeEvent = ServerSentEvent.<String>builder()
+                .event("done")
+                .data("数据流已结束")
+                .build();
+
+        // 5.将数据流和完成事件合并
+        return dataStream.concatWithValues(completeEvent);
+    }
+
+
+    @PostMapping("/deploy")
+    public BaseResponse<String> deployApp(@RequestBody AppDeployRequest appDeployRequest, HttpServletRequest request) {
+        // 参数校验
+        if (appDeployRequest == null || appDeployRequest.getAppId() <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        // 获取当前登录用户
+        User loginUser = userService.getLoginUser(request);
+        // 调用服务
+        String result = appService.deployApp(appDeployRequest.getAppId(), loginUser);
+        // 返回结果
+        return ResultUtils.success(result);
     }
 
     /**
