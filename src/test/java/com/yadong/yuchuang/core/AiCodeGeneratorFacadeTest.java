@@ -2,8 +2,11 @@ package com.yadong.yuchuang.core;
 
 import com.yadong.yuchuang.model.enums.CodeGenTypeEnum;
 import jakarta.annotation.Resource;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+
+import java.io.File;
 
 @SpringBootTest
 class AiCodeGeneratorFacadeTest {
@@ -12,8 +15,9 @@ class AiCodeGeneratorFacadeTest {
 
     @Test
     public void generateAndSaveCode() {
-        aiCodeGeneratorFacade.generateAndSaveCode(
+        File file = aiCodeGeneratorFacade.generateAndSaveCode(
                 "生成用户“超人不会飞”的个人博客页面，不超过三十行”", CodeGenTypeEnum.MULTI_FILE);
+        Assertions.assertNotNull(file);
     }
 
     @Test

@@ -1,9 +1,11 @@
 package com.yadong.yuchuang.core;
 
 import com.yadong.yuchuang.ai.model.HtmlCodeResult;
+import com.yadong.yuchuang.core.parser.CodeParserExecutor;
+import com.yadong.yuchuang.model.enums.CodeGenTypeEnum;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class CodeParserTest {
 
@@ -27,7 +29,7 @@ class CodeParserTest {
                 ```
                 模拟一段描述
                 """;
-        HtmlCodeResult htmlCodeResult = CodeParser.parseHtmlCode(codeContent);
+        HtmlCodeResult htmlCodeResult = (HtmlCodeResult) CodeParserExecutor.executeParse(codeContent, CodeGenTypeEnum.HTML);
         System.out.println(htmlCodeResult.getHtmlCode());
         assertNotNull(htmlCodeResult);
     }

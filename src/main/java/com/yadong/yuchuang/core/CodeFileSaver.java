@@ -7,6 +7,7 @@ import com.yadong.yuchuang.ai.model.HtmlCodeResult;
 import com.yadong.yuchuang.ai.model.MultiFileCodeResult;
 import com.yadong.yuchuang.exception.BusinessException;
 import com.yadong.yuchuang.exception.ErrorCode;
+import com.yadong.yuchuang.model.enums.CodeGenTypeEnum;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
@@ -15,6 +16,7 @@ import java.io.File;
  * 代码保存器
  */
 @Slf4j
+@Deprecated
 public class CodeFileSaver {
 
     /**
@@ -29,7 +31,7 @@ public class CodeFileSaver {
         if (htmlCodeResult == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
         }
-        String filePath = buildUniqueDir("html") + "/";
+        String filePath = buildUniqueDir(CodeGenTypeEnum.HTML.getValue()) + "/";
         writeToFile(filePath, "index.html", htmlCodeResult.getHtmlCode());
     }
 
@@ -41,7 +43,7 @@ public class CodeFileSaver {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
         }
         // 构建文件保存目录
-        String filePath = buildUniqueDir("multi_file") + "/";
+        String filePath = buildUniqueDir(CodeGenTypeEnum.MULTI_FILE.getValue()) + "/";
         // 分别保存文件
         writeToFile(filePath, "index.html", multiFileCodeResult.getHtmlCode());
         writeToFile(filePath, "index.css", multiFileCodeResult.getCssCode());
