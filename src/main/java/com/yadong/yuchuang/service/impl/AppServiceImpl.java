@@ -15,20 +15,25 @@ import com.yadong.yuchuang.exception.ThrowUtils;
 import com.yadong.yuchuang.mapper.AppMapper;
 import com.yadong.yuchuang.model.dto.app.*;
 import com.yadong.yuchuang.model.entity.App;
+import com.yadong.yuchuang.model.entity.ChatHistory;
 import com.yadong.yuchuang.model.entity.User;
+import com.yadong.yuchuang.model.enums.ChatMessageTypeEnum;
 import com.yadong.yuchuang.model.enums.CodeGenTypeEnum;
 import com.yadong.yuchuang.model.enums.UserRoleEnum;
 import com.yadong.yuchuang.model.vo.AppVO;
 import com.yadong.yuchuang.model.vo.UserVO;
 import com.yadong.yuchuang.service.AppService;
+import com.yadong.yuchuang.service.ChatHistoryService;
 import com.yadong.yuchuang.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.io.File;
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +49,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     @Resource
     private AiCodeGeneratorFacade aiCodeGeneratorFacade;
 
+    @Resource
+    @Lazy
+    private ChatHistoryService chatHistoryService;
 
     /**
      * 聊天生成代码
@@ -58,13 +66,48 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         // 1.查询应用是否存在
         App app = this.getById(appId);
         ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+
         // 2.校验用户是否是应用的创建者
         ThrowUtils.throwIf(!app.getUserId().equals(loginUser.getId()), ErrorCode.NO_AUTH_ERROR);
+
         // 3.获取应用类型
         CodeGenTypeEnum appType = CodeGenTypeEnum.getEnumByValue(app.getCodeGenType());
         ThrowUtils.throwIf(appType == null, ErrorCode.PARAMS_ERROR, "应用类型错误");
-        // 4. 生成代码
-        return aiCodeGeneratorFacade.generateAndSaveCodeStream(message, appId, appType);
+
+        // 4.添加用户消息到历史记录
+        ChatHistory chatHistory = ChatHistory.builder()
+                .message(message)
+                .messageType(ChatMessageTypeEnum.USER.getValue())
+                .userId(loginUser.getId())
+                .appId(appId).build();
+        boolean save = chatHistoryService.addChatMessage(chatHistory);
+        if (!save) {
+            log.info("保存用户消息失败");
+        }
+
+        // 5. 调用 AI 服务生成代码
+        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, appId, appType);
+        StringBuilder sb = new StringBuilder();
+        return codeStream.doOnNext(sb::append)
+                .doOnComplete(() -> {
+                    // 6.将AI的回答保存到数据库
+                    chatHistoryService.addChatMessage(ChatHistory.builder()
+                            .message(sb.toString())
+                            .messageType(ChatMessageTypeEnum.AI.getValue())
+                            .userId(loginUser.getId())
+                            .appId(appId)
+                            .build());
+                })
+                .doOnError(e -> {
+                    log.info("AI 生成代码失败：{}", e.getMessage());
+                    // 生成失败也保存
+                    chatHistoryService.addChatMessage(ChatHistory.builder()
+                            .message(sb.toString())
+                            .messageType(ChatMessageTypeEnum.AI.getValue())
+                            .userId(loginUser.getId())
+                            .appId(appId)
+                            .build());
+                });
     }
 
     @Override
@@ -142,7 +185,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         if (!result) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "创建失败");
         }
-        // 5.
+        // 5.返回应用id
         return app.getId();
     }
 
@@ -151,21 +194,23 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
      */
     @Override
     public boolean deleteApp(Long id, HttpServletRequest request) {
+        // 1.参数和权限校验
+        checkAuthAndParams(id, request);
+        // 2.删除数据库记录
+        return this.removeById(id);
+    }
+
+    private void checkAuthAndParams(Long id, HttpServletRequest request) {
         // 1. 参数校验
-        if (id == null || id <= 0) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR);
-        }
+        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
         User loginUser = userService.getLoginUser(request);
         // 2. 校验应用是否存在
         App app = this.getById(id);
-        if (app == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
-        }
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR);
         // 3. 仅本人或者管理员删除
         if (!app.getUserId().equals(loginUser.getId()) || !loginUser.getUserRole().equals(UserRoleEnum.ADMIN.getValue())) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
-        return this.removeById(id);
     }
 
     /**
@@ -181,9 +226,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         User loginUser = userService.getLoginUser(request);
         Long id = appUpdateRequest.getId();
         App app = this.getById(id);
-        if (app == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
-        }
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR);
         // 3. 校验用户是否是应用的创建者
         if (!app.getUserId().equals(loginUser.getId()) || !loginUser.getUserRole().equals(UserRoleEnum.ADMIN.getValue())) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
@@ -201,21 +244,14 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
      */
     @Override
     public AppVO getAppById(Long id, HttpServletRequest request) {
-        if (id == null || id <= 0) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR);
-        }
-        User loginUser = userService.getLoginUser(request);
+        // 1.参数和权限校验
+        checkAuthAndParams(id, request);
+        // 2.查询数据库
         App app = this.getById(id);
-        if (app == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
-        }
-        if (!app.getUserId().equals(loginUser.getId()) || !loginUser.getUserRole().equals(UserRoleEnum.ADMIN.getValue())) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
-        }
         AppVO appVO = new AppVO();
         BeanUtil.copyProperties(app, appVO);
-        // 查询应用创建者
-        UserVO userVO = userService.getUserVO(loginUser);
+        // 3.查询应用创建者
+        UserVO userVO = userService.getUserVO(userService.getLoginUser(request));
         appVO.setUser(userVO);
         return appVO;
     }
@@ -370,5 +406,13 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         appVOPage.setRecords(records);
         // 5.返回结果
         return appVOPage;
+    }
+
+    @Override
+    public boolean removeById(Serializable id) {
+        // 1.删除应用
+        super.removeById(id);
+        // 2。删除聊天记录
+        return chatHistoryService.deleteByAppId((long) id);
     }
 }

@@ -42,3 +42,19 @@ create table app
     INDEX idx_appName (app_name),         -- 提升基于应用名称的查询性能
     INDEX idx_userId (user_id)            -- 提升基于用户 ID 的查询性能
 ) comment '应用' collate = utf8mb4_unicode_ci; -- 设置编码为 utf8mb4_unicode_ci, 兼容中文
+
+-- 对话历史表
+create table if not exists chat_history
+(
+    id          bigint primary key auto_increment comment 'id',
+    message     text               not null comment '消息',
+    message_type varchar(32)        not null comment 'user/ai',
+    app_id      bigint             not null comment '应用id',
+    user_id     bigint             not null comment '创建用户id',
+    create_time datetime default CURRENT_TIMESTAMP comment '创建时间',
+    update_time datetime default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP comment '更新时间',
+    is_delete   tinyint  default 0 not null comment '是否删除',
+    INDEX idx_appId (app_id),
+    INDEX idx_createTime (create_time),
+    INDEX idx_appId_createTime (app_id, create_time)
+) comment '对话历史表' collate = utf8mb4_unicode_ci;
