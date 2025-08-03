@@ -7,7 +7,7 @@ import cn.hutool.core.util.StrUtil;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
-import com.yadong.yuchuang.common.AppConstant;
+import com.yadong.yuchuang.constant.AppConstant;
 import com.yadong.yuchuang.core.AiCodeGeneratorFacade;
 import com.yadong.yuchuang.exception.BusinessException;
 import com.yadong.yuchuang.exception.ErrorCode;
@@ -163,6 +163,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
      */
     @Override
     public long addApp(AppAddRequest appAddRequest, HttpServletRequest request) {
+        appAddRequest.setAppName("temp_name");
+        appAddRequest.setCodeGenType(CodeGenTypeEnum.MULTI_FILE.getValue());
         // 1. 参数校验
         if (appAddRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);

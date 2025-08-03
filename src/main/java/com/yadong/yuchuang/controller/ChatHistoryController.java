@@ -5,13 +5,12 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.yadong.yuchuang.annonation.AuthCheck;
 import com.yadong.yuchuang.common.BaseResponse;
 import com.yadong.yuchuang.common.ResultUtils;
-import com.yadong.yuchuang.common.UserConstant;
+import com.yadong.yuchuang.constant.UserConstant;
 import com.yadong.yuchuang.exception.ErrorCode;
 import com.yadong.yuchuang.exception.ThrowUtils;
 import com.yadong.yuchuang.model.dto.chathistory.ChatHistoryQueryRequest;
 import com.yadong.yuchuang.model.entity.ChatHistory;
 import com.yadong.yuchuang.model.entity.User;
-import com.yadong.yuchuang.model.vo.ChatHistoryVO;
 import com.yadong.yuchuang.service.ChatHistoryService;
 import com.yadong.yuchuang.service.UserService;
 import jakarta.annotation.Resource;
@@ -45,12 +44,12 @@ public class ChatHistoryController {
      * @return 对话历史分页
      */
     @GetMapping("/app/{appId}")
-    public BaseResponse<Page<ChatHistoryVO>> listAppChatHistory(@PathVariable Long appId,
+    public BaseResponse<Page<ChatHistory>> listAppChatHistory(@PathVariable Long appId,
                                                               @RequestParam(defaultValue = "10") int pageSize,
                                                               @RequestParam(required = false) LocalDateTime lastCreateTime,
                                                               HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
-        Page<ChatHistoryVO> result = chatHistoryService.listChatHistoryByPage(appId, pageSize, lastCreateTime, loginUser);
+        Page<ChatHistory> result = chatHistoryService.listChatHistoryByPage(appId, pageSize, lastCreateTime, loginUser);
         return ResultUtils.success(result);
     }
 

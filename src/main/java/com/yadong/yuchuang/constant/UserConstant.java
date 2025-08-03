@@ -1,4 +1,4 @@
-package com.yadong.yuchuang.common;
+package com.yadong.yuchuang.constant;
 
 public interface UserConstant {
 

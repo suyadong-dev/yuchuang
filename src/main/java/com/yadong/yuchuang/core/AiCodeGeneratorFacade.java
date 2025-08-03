@@ -1,6 +1,7 @@
 package com.yadong.yuchuang.core;
 
 import com.yadong.yuchuang.ai.AiCodeGenerateService;
+import com.yadong.yuchuang.ai.AiCodeGenerateServiceFactory;
 import com.yadong.yuchuang.ai.model.HtmlCodeResult;
 import com.yadong.yuchuang.ai.model.MultiFileCodeResult;
 import com.yadong.yuchuang.core.parser.CodeParserExecutor;
@@ -11,6 +12,7 @@ import com.yadong.yuchuang.exception.ThrowUtils;
 import com.yadong.yuchuang.model.enums.CodeGenTypeEnum;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -23,14 +25,19 @@ import java.io.File;
 @Slf4j
 @Service
 public class AiCodeGeneratorFacade {
+
     @Resource
-    private AiCodeGenerateService aiCodeGenerateService;
+    @Lazy
+    private AiCodeGenerateServiceFactory aiCodeGenerateServiceFactory;
+
 
     /**
      * 根据类型生成代码并保存（统一入口）
      */
     public File generateAndSaveCode(String userMessage, Long id, CodeGenTypeEnum codeGenTypeEnum) {
         ThrowUtils.throwIf(codeGenTypeEnum == null, ErrorCode.PARAMS_ERROR, "生成类型为空");
+        // 每个app一个 服务，防止多个app之间互相影响，自动实现对话隔离
+        AiCodeGenerateService aiCodeGenerateService = aiCodeGenerateServiceFactory.getAiCodeGenerateService(id);
         switch (codeGenTypeEnum) {
             case HTML -> {
                 HtmlCodeResult htmlCodeResult = aiCodeGenerateService.generateHtmlCode(userMessage);
@@ -49,6 +56,8 @@ public class AiCodeGeneratorFacade {
      */
     public Flux<String> generateAndSaveCodeStream(String userMessage, Long id, CodeGenTypeEnum codeGenTypeEnum) {
         ThrowUtils.throwIf(codeGenTypeEnum == null, ErrorCode.PARAMS_ERROR, "生成类型为空");
+        // 获取当前app 的AiCodeGenerateService
+        AiCodeGenerateService aiCodeGenerateService = aiCodeGenerateServiceFactory.getAiCodeGenerateService(id);
         switch (codeGenTypeEnum) {
             case HTML -> {
                 // 生成代码

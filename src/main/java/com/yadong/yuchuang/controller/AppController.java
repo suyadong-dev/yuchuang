@@ -6,7 +6,7 @@ import com.yadong.yuchuang.annonation.AuthCheck;
 import com.yadong.yuchuang.common.BaseResponse;
 import com.yadong.yuchuang.common.DeleteRequest;
 import com.yadong.yuchuang.common.ResultUtils;
-import com.yadong.yuchuang.common.UserConstant;
+import com.yadong.yuchuang.constant.UserConstant;
 import com.yadong.yuchuang.exception.BusinessException;
 import com.yadong.yuchuang.exception.ErrorCode;
 import com.yadong.yuchuang.model.dto.app.*;

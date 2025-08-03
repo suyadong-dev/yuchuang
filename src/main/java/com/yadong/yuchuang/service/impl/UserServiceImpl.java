@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.yadong.yuchuang.common.UserConstant.USER_LOGIN_STATE;
+import static com.yadong.yuchuang.constant.UserConstant.USER_LOGIN_STATE;
 
 /**
  * 用户表 服务层实现。

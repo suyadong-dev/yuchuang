@@ -6,7 +6,7 @@ import com.mybatisflex.core.service.IService;
 import com.yadong.yuchuang.model.dto.chathistory.ChatHistoryQueryRequest;
 import com.yadong.yuchuang.model.entity.ChatHistory;
 import com.yadong.yuchuang.model.entity.User;
-import com.yadong.yuchuang.model.vo.ChatHistoryVO;
+import dev.langchain4j.memory.ChatMemory;
 
 import java.time.LocalDateTime;
 
@@ -19,7 +19,7 @@ public interface ChatHistoryService extends IService<ChatHistory> {
     /**
      * 分页查询历史聊天记录（用于前端展示）
      */
-    Page<ChatHistoryVO> listChatHistoryByPage(long appId, long pageSize, LocalDateTime lastCreateTime, User loginUser);
+    Page<ChatHistory> listChatHistoryByPage(long appId, long pageSize, LocalDateTime lastCreateTime, User loginUser);
 
     /**
      * 新增对话记录
@@ -35,5 +35,10 @@ public interface ChatHistoryService extends IService<ChatHistory> {
      * 根据appId删除对话记录
      */
     boolean deleteByAppId(Long appId);
+
+    /**
+     * 加载对话历史
+     */
+    int loadChatHistoryToMemory(long appId, ChatMemory chatMemory, int maxCount);
 }
 

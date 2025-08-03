@@ -1,5 +1,6 @@
 package com.yadong.yuchuang.service.impl;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
@@ -12,11 +13,14 @@ import com.yadong.yuchuang.model.dto.chathistory.ChatHistoryQueryRequest;
 import com.yadong.yuchuang.model.entity.App;
 import com.yadong.yuchuang.model.entity.ChatHistory;
 import com.yadong.yuchuang.model.entity.User;
-import com.yadong.yuchuang.model.vo.ChatHistoryVO;
+import com.yadong.yuchuang.model.enums.ChatMessageTypeEnum;
 import com.yadong.yuchuang.service.AppService;
 import com.yadong.yuchuang.service.ChatHistoryService;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.memory.ChatMemory;
 import jakarta.annotation.Resource;
-import org.springframework.beans.BeanUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -27,11 +31,61 @@ import java.util.List;
  *
  * @author 超人不会飞
  */
+@Slf4j
 @Service
 public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatHistory> implements ChatHistoryService {
 
     @Resource
     private AppService appService;
+
+
+    /**
+     * 加载对话记录到内存
+     *
+     * @param appId      appId
+     * @param chatMemory 每个app独有的缓存模型
+     * @param maxCount   最大加载数量
+     * @return 加载数量
+     */
+    @Override
+    public int loadChatHistoryToMemory(long appId, ChatMemory chatMemory, int maxCount) {
+        try {
+            // 1.参数校验
+            ThrowUtils.throwIf(appId <= 0, ErrorCode.PARAMS_ERROR);
+            // 2.构造查询条件
+            QueryWrapper queryWrapper = QueryWrapper.create()
+                    .eq(ChatHistory::getAppId, appId)
+                    .orderBy(ChatHistory::getCreateTime, false)
+                    .limit(1, maxCount);
+            // 3.查询历史消息
+            List<ChatHistory> chatHistories = this.list(queryWrapper);
+            if (CollUtil.isEmpty(chatHistories)) {
+                return 0;
+            }
+            // 4.翻转结果
+            chatHistories = chatHistories.reversed();
+            int count = 0;
+            chatMemory.clear(); // 清空缓存, 防止缓存中有其他对话
+            // 5.将结果添加到缓存模型中
+            for (ChatHistory chatHistory : chatHistories) {
+                // 判断消息类型
+                // 5.1用户消息
+                if (chatHistory.getMessage().equals(ChatMessageTypeEnum.AI.getValue())) {
+                    chatMemory.add(UserMessage.from(chatHistory.getMessage()));
+                } else {
+                    // 5.2AI消息
+                    chatMemory.add(AiMessage.from(chatHistory.getMessage()));
+                }
+                count += 1;
+            }
+            log.info("加载历史消息成功，共加载{}条", count);
+            return count;
+        } catch (Exception e) {
+            log.error("加载历史消息失败：{}", e.getMessage());
+            // 6.加载失败不影响运行，只是没有对话记忆，返回0
+            return 0;
+        }
+    }
 
     /**
      * 对话记录分页查询
@@ -43,7 +97,7 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
      * @return 分页结果
      */
     @Override
-    public Page<ChatHistoryVO> listChatHistoryByPage(long appId, long pageSize, LocalDateTime lastCreateTime, User loginUser) {
+    public Page<ChatHistory> listChatHistoryByPage(long appId, long pageSize, LocalDateTime lastCreateTime, User loginUser) {
         // 1.参数校验
         ThrowUtils.throwIf(appId <= 0, ErrorCode.PARAMS_ERROR);
         ThrowUtils.throwIf(pageSize <= 0 || pageSize > 50, ErrorCode.PARAMS_ERROR);
@@ -59,24 +113,14 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
         }
 
         // 4.构造查询条件
+        // 按照时间降序是因为要查询的是 <= lastCreateTime 并且离现在的时间最近的记录
+        // 正序的查出来的结果是按时间升序的，第一条离当前时间最远，而limit是从第一条开始取，所以需要倒序
         QueryWrapper queryWrapper = QueryWrapper.create()
-                .eq("app_id", appId)
-                .lt("create_time", lastCreateTime, lastCreateTime != null)  // 上次查询的最老的时间要比这次查询最新的时间早
-                .orderBy("create_time", false);
+                .eq(ChatHistory::getAppId, appId)
+                .lt(ChatHistory::getCreateTime, lastCreateTime, lastCreateTime != null)  // 上次查询的最老的时间要比这次查询最新的时间早
+                .orderBy(ChatHistory::getCreateTime, false);
 
-        Page<ChatHistory> page = this.page(Page.of(1, pageSize), queryWrapper);
-
-        // 5.将page<ChatHistory>转为page<ChatHistoryVO>
-        List<ChatHistoryVO> chatVOList = page.getRecords().stream().map(chatHistory -> {
-            ChatHistoryVO chatHistoryVO = new ChatHistoryVO();
-            BeanUtils.copyProperties(chatHistory, chatHistoryVO);
-            return chatHistoryVO;
-        }).toList();
-        // 6.返回结果
-        return new Page<>(chatVOList,
-                page.getPageNumber(),
-                page.getPageSize(),
-                page.getTotalRow());
+        return this.page(Page.of(1, pageSize), queryWrapper);
     }
 
     /**
@@ -110,8 +154,8 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
      */
     @Override
     public QueryWrapper getQueryWrapper(ChatHistoryQueryRequest chatHistoryQueryRequest) {
+        // 获取查询参数
         Long appId = chatHistoryQueryRequest.getAppId();
-        // 上次查询的最老的时间
         Long id = chatHistoryQueryRequest.getId();
         String message = chatHistoryQueryRequest.getMessage();
         String messageType = chatHistoryQueryRequest.getMessageType();
@@ -119,15 +163,16 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
         LocalDateTime lastCreateTime = chatHistoryQueryRequest.getLastCreateTime();
         String sortField = chatHistoryQueryRequest.getSortField();
         String sortOrder = chatHistoryQueryRequest.getSortOrder();
+        // 构造查询条件
         QueryWrapper queryWrapper = QueryWrapper.create()
-                .eq("id", id, id != null)
-                .like("message", message, message != null)
-                .eq("message_type", messageType, messageType != null)
-                .eq("user_id", userId, userId != null)
-                .eq("app_id", appId, appId != null);
+                .eq(ChatHistory::getId, id, id != null)
+                .like(ChatHistory::getMessage, message, message != null)
+                .eq(ChatHistory::getMessageType, messageType, messageType != null)
+                .eq(ChatHistory::getUserId, userId, userId != null)
+                .eq(ChatHistory::getAppId, appId, appId != null);
         // 游标查询逻辑，如果lastCreateTime不为空，则只查询小于lastCreateTime的数据
         if (lastCreateTime != null) {
-            queryWrapper.lt("create_time", lastCreateTime);
+            queryWrapper.lt(ChatHistory::getCreateTime, lastCreateTime);
         }
         // 排序逻辑
         if (StrUtil.isNotBlank(sortField) && StrUtil.isNotBlank(sortOrder)) {

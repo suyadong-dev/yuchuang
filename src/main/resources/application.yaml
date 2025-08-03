@@ -9,6 +9,14 @@ spring:
     password: 1234
   profiles:
     active: local
+  # redis
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:
+      ttl: 3600
+#      username: root
 server:
   port: 8123
   servlet:
@@ -28,4 +36,3 @@ knife4j:
 logging:
   level:
     root: INFO
-
