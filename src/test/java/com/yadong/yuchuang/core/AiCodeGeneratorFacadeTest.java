@@ -2,13 +2,17 @@ package com.yadong.yuchuang.core;
 
 import com.yadong.yuchuang.model.enums.CodeGenTypeEnum;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import reactor.core.publisher.Flux;
 
 import java.io.File;
+import java.util.List;
 
 @SpringBootTest
+@Slf4j
 class AiCodeGeneratorFacadeTest {
     @Resource
     private AiCodeGeneratorFacade aiCodeGeneratorFacade;
@@ -37,4 +41,18 @@ class AiCodeGeneratorFacadeTest {
                         "我刚刚让你做了什么", 2L, CodeGenTypeEnum.HTML)
                 .subscribe(System.out::println);
     }
+
+    @Test
+    void generateVueProjectCodeStream() {
+        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(
+                "简单的电商页面，总代码量不超过 200 行"
+                , 2L, CodeGenTypeEnum.VUE_PROJECT);
+        // 阻塞等待所有数据收集完成
+        List<String> result = codeStream.collectList().block();
+        // 验证结果
+        Assertions.assertNotNull(result);
+        String completeContent = String.join("", result);
+        Assertions.assertNotNull(completeContent);
+    }
+
 }

@@ -54,22 +54,26 @@ public class AiCodeGeneratorFacade {
     /**
      * 生成代码并保存（流式统一入口）
      */
-    public Flux<String> generateAndSaveCodeStream(String userMessage, Long id, CodeGenTypeEnum codeGenTypeEnum) {
+    public Flux<String> generateAndSaveCodeStream(String userMessage, Long appId, CodeGenTypeEnum codeGenTypeEnum) {
         ThrowUtils.throwIf(codeGenTypeEnum == null, ErrorCode.PARAMS_ERROR, "生成类型为空");
         // 获取当前app 的AiCodeGenerateService
-        AiCodeGenerateService aiCodeGenerateService = aiCodeGenerateServiceFactory.getAiCodeGenerateService(id);
+        AiCodeGenerateService aiCodeGenerateService = aiCodeGenerateServiceFactory.getAiCodeGenerateService(appId, codeGenTypeEnum);
         switch (codeGenTypeEnum) {
             case HTML -> {
                 // 生成代码
                 Flux<String> codeStream = aiCodeGenerateService.generateHtmlCodeStream(userMessage);
                 // 解析代码
-                return processCodeStream(codeStream, id, codeGenTypeEnum);
+                return processCodeStream(codeStream, appId, codeGenTypeEnum);
             }
             case MULTI_FILE -> {
                 // 生成代码
                 Flux<String> codeStream = aiCodeGenerateService.generateMultiFileCodeStream(userMessage);
                 // 解析代码
-                return processCodeStream(codeStream, id, codeGenTypeEnum);
+                return processCodeStream(codeStream, appId, codeGenTypeEnum);
+            }
+            case VUE_PROJECT -> {
+                Flux<String> codeStream = aiCodeGenerateService.generateVueProjectCodeStream(appId, userMessage);
+                return processCodeStream(codeStream, appId, CodeGenTypeEnum.MULTI_FILE);
             }
             default -> throw new BusinessException(ErrorCode.SYSTEM_ERROR, "不支持的代码生成类型");
         }
