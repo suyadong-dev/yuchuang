@@ -1,15 +1,20 @@
 package com.yadong.yuchuang.core;
 
+import cn.hutool.json.JSONUtil;
 import com.yadong.yuchuang.ai.AiCodeGenerateService;
 import com.yadong.yuchuang.ai.AiCodeGenerateServiceFactory;
 import com.yadong.yuchuang.ai.model.HtmlCodeResult;
 import com.yadong.yuchuang.ai.model.MultiFileCodeResult;
+import com.yadong.yuchuang.ai.model.message.AiResponseMessage;
+import com.yadong.yuchuang.ai.model.message.ToolExecutedMessage;
+import com.yadong.yuchuang.ai.model.message.ToolRequestMessage;
 import com.yadong.yuchuang.core.parser.CodeParserExecutor;
 import com.yadong.yuchuang.core.saver.CodeFileSaverExecutor;
 import com.yadong.yuchuang.exception.BusinessException;
 import com.yadong.yuchuang.exception.ErrorCode;
 import com.yadong.yuchuang.exception.ThrowUtils;
 import com.yadong.yuchuang.model.enums.CodeGenTypeEnum;
+import dev.langchain4j.service.TokenStream;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
@@ -72,11 +77,43 @@ public class AiCodeGeneratorFacade {
                 return processCodeStream(codeStream, appId, codeGenTypeEnum);
             }
             case VUE_PROJECT -> {
-                Flux<String> codeStream = aiCodeGenerateService.generateVueProjectCodeStream(appId, userMessage);
-                return processCodeStream(codeStream, appId, CodeGenTypeEnum.MULTI_FILE);
+                TokenStream tokenStream = aiCodeGenerateService.generateVueProjectCodeStream(appId, userMessage);
+                return processTokenSteam(tokenStream);
             }
             default -> throw new BusinessException(ErrorCode.SYSTEM_ERROR, "不支持的代码生成类型");
         }
+    }
+
+    /**
+     * 将 tokenSteam流转为 Flux流
+     *
+     * @param tokenStream AI 生成的流
+     * @return Flux流
+     */
+    private Flux<String> processTokenSteam(TokenStream tokenStream) {
+        return Flux.create(sink -> {
+            tokenStream.onPartialResponse(s -> {
+                        // AI 响应消息，如代码生成完毕
+                        AiResponseMessage partialResponse = new AiResponseMessage(s);
+                        sink.next(JSONUtil.toJsonStr(partialResponse));
+                    })
+                    // 工具执行请求
+                    .onPartialToolExecutionRequest((idx, toolExecutionRequest) -> {
+                        ToolRequestMessage toolRequestMessage = new ToolRequestMessage(toolExecutionRequest);
+                        sink.next(JSONUtil.toJsonStr(toolRequestMessage));
+                    })
+                    .onToolExecuted(toolExecution -> {
+                        // 工具调用完毕消息
+                        ToolExecutedMessage toolExecutedMessage = new ToolExecutedMessage(toolExecution);
+                        sink.next(JSONUtil.toJsonStr(toolExecutedMessage));
+                    })
+                    .onCompleteResponse(chatResponse -> sink.complete())
+                    .onError(throwable -> {
+                        throwable.printStackTrace();
+                        sink.error(throwable);
+                    }).start();
+        });
+
     }
 
     /**

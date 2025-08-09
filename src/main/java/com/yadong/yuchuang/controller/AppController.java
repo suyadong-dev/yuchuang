@@ -132,7 +132,7 @@ public class AppController {
     /**
      * 分页查询用户的应用列表
      */
-    @PostMapping("/list/my")
+    @PostMapping("/my/list/page/vo")
     public BaseResponse<Page<AppVO>> listMyAppsByPage(@RequestBody AppQueryRequest appQueryRequest, HttpServletRequest request) {
         if (appQueryRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -190,7 +190,7 @@ public class AppController {
     /**
      * 分页查询应用列表（管理员）
      */
-    @PostMapping("/admin/list")
+    @PostMapping("/admin/list/page/vo")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Page<AppVO>> adminListAppsByPage(@RequestBody AppAdminQueryRequest appAdminQueryRequest) {
         if (appAdminQueryRequest == null) {
@@ -203,7 +203,7 @@ public class AppController {
     /**
      * 根据id获取应用详情（管理员）
      */
-    @GetMapping("/admin/get")
+    @GetMapping("/admin/get/vo")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<AppVO> adminGetAppById(long id) {
         if (id <= 0) {

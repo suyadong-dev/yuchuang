@@ -9,6 +9,7 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import com.yadong.yuchuang.constant.AppConstant;
 import com.yadong.yuchuang.core.AiCodeGeneratorFacade;
+import com.yadong.yuchuang.core.handler.StreamHandlerExecutor;
 import com.yadong.yuchuang.exception.BusinessException;
 import com.yadong.yuchuang.exception.ErrorCode;
 import com.yadong.yuchuang.exception.ThrowUtils;
@@ -53,6 +54,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     @Lazy
     private ChatHistoryService chatHistoryService;
 
+    @Resource
+    private StreamHandlerExecutor steamHandlerExecutor;
+
     /**
      * 聊天生成代码
      *
@@ -87,27 +91,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
         // 5. 调用 AI 服务生成代码
         Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, appId, appType);
-        StringBuilder sb = new StringBuilder();
-        return codeStream.doOnNext(sb::append)
-                .doOnComplete(() -> {
-                    // 6.将AI的回答保存到数据库
-                    chatHistoryService.addChatMessage(ChatHistory.builder()
-                            .message(sb.toString())
-                            .messageType(ChatMessageTypeEnum.AI.getValue())
-                            .userId(loginUser.getId())
-                            .appId(appId)
-                            .build());
-                })
-                .doOnError(e -> {
-                    log.info("AI 生成代码失败：{}", e.getMessage());
-                    // 生成失败也保存
-                    chatHistoryService.addChatMessage(ChatHistory.builder()
-                            .message(sb.toString())
-                            .messageType(ChatMessageTypeEnum.AI.getValue())
-                            .userId(loginUser.getId())
-                            .appId(appId)
-                            .build());
-                });
+        return steamHandlerExecutor.execute(codeStream, chatHistoryService, loginUser, appId, appType);
     }
 
     @Override
@@ -163,15 +147,12 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
      */
     @Override
     public long addApp(AppAddRequest appAddRequest, HttpServletRequest request) {
-        appAddRequest.setAppName("temp_name");
-        appAddRequest.setCodeGenType(CodeGenTypeEnum.MULTI_FILE.getValue());
         // 1. 参数校验
         if (appAddRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        String appName = appAddRequest.getAppName();
         String initPrompt = appAddRequest.getInitPrompt();
-        if (appName == null || initPrompt == null) {
+        if (initPrompt == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数不能为空");
         }
         User loginUser = userService.getLoginUser(request);
@@ -179,6 +160,10 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         App app = new App();
         BeanUtil.copyProperties(appAddRequest, app);
         app.setUserId(loginUser.getId());
+        // 设置app的名称为提示词前12位
+        app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
+        // TODO 待删除，临时使用
+        app.setCodeGenType(CodeGenTypeEnum.VUE_PROJECT.getValue());
         // 3.生成部署标识
         app.setDeployKey(RandomUtil.randomString(6));
         app.setCreateTime(LocalDateTime.now()); // 设置创建时间

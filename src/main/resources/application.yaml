@@ -1,6 +1,9 @@
 spring:
   application:
     name: yuchuang
+  session:
+    store-type: redis
+    timeout: 259200
   # 数据库配置
   datasource:
     driver-class-name: com.mysql.jdbc.Driver
@@ -21,6 +24,9 @@ server:
   port: 8123
   servlet:
     context-path: /api
+    session:
+      cookie:
+        max-age: 259200
 # springdoc-openapi
 springdoc:
   group-configs:

@@ -122,6 +122,12 @@
             <artifactId>caffeine</artifactId>
             <version>3.2.2</version>
         </dependency>
+        <!-- Spring Session + Redis -->
+        <dependency>
+            <groupId>org.springframework.session</groupId>
+            <artifactId>spring-session-data-redis</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>
