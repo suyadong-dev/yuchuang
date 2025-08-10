@@ -9,6 +9,7 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import com.yadong.yuchuang.constant.AppConstant;
 import com.yadong.yuchuang.core.AiCodeGeneratorFacade;
+import com.yadong.yuchuang.core.builder.VueProjectBuilder;
 import com.yadong.yuchuang.core.handler.StreamHandlerExecutor;
 import com.yadong.yuchuang.exception.BusinessException;
 import com.yadong.yuchuang.exception.ErrorCode;
@@ -56,6 +57,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Resource
     private StreamHandlerExecutor steamHandlerExecutor;
+
+    @Resource
+    private VueProjectBuilder vueProjectBuilder;
 
     /**
      * 聊天生成代码
@@ -121,7 +125,16 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "应用代码不存在，请先生成代码");
         }
         String targetDir = AppConstant.CODE_DEPLOY_ROOT_DIR + File.separator + app.getDeployKey();
-        // 6.拷贝代码
+
+        // 6.Vue 项目单独处理
+        if (appType.equals(CodeGenTypeEnum.VUE_PROJECT.getValue())) {
+            // 构建项目
+            boolean isSuccess = vueProjectBuilder.buildProject(new File(sourceDir));
+            ThrowUtils.throwIf(!isSuccess, ErrorCode.OPERATION_ERROR, "构建项目失败");
+            // 修改源路径为dist 目录
+            sourceDir = sourceDir + File.separator + "dist";
+        }
+        // 7.拷贝代码
         try {
             FileUtil.copyContent(new File(sourceDir), new File(targetDir), true);
         } catch (Exception e) {

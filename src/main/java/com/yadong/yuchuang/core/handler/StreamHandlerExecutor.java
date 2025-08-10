@@ -3,6 +3,7 @@ package com.yadong.yuchuang.core.handler;
 import com.yadong.yuchuang.model.entity.User;
 import com.yadong.yuchuang.model.enums.CodeGenTypeEnum;
 import com.yadong.yuchuang.service.ChatHistoryService;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 
@@ -11,7 +12,8 @@ public class StreamHandlerExecutor {
     /**
      * VUE 项目流式处理器
      */
-    private static final JsonMessageStreamHandler jsonMessageStreamHandler = new JsonMessageStreamHandler();
+    @Resource
+    private JsonMessageStreamHandler jsonMessageStreamHandler;
 
     /**
      * HTML、MULTI_FILE 流式处理器

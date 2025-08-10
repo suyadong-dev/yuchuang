@@ -52,7 +52,7 @@ public class AppController {
                     Map<String, String> wrapper = new HashMap<>();
                     wrapper.put("d", data);
                     return ServerSentEvent.<String>builder()
-                            .event("code-generation")
+//                            .event("code-generation")
                             .data(JSONUtil.toJsonStr(wrapper))
                             .build();
                 });

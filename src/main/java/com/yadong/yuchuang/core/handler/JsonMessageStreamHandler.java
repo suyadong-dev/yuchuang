@@ -5,22 +5,31 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.yadong.yuchuang.ai.model.message.*;
+import com.yadong.yuchuang.core.builder.VueProjectBuilder;
 import com.yadong.yuchuang.model.entity.ChatHistory;
 import com.yadong.yuchuang.model.entity.User;
 import com.yadong.yuchuang.model.enums.ChatMessageTypeEnum;
 import com.yadong.yuchuang.service.ChatHistoryService;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 
+import java.io.File;
 import java.util.HashSet;
 import java.util.Set;
+
+import static com.yadong.yuchuang.constant.AppConstant.CODE_OUTPUT_ROOT_DIR;
 
 /**
  * JSON 消息流处理器
  * 处理 VUE_PROJECT 类型的复杂流式响应，包含工具调用信息
  */
 @Slf4j
+@Component
 public class JsonMessageStreamHandler {
+    @Resource
+    private VueProjectBuilder vueProjectBuilder;
 
     /**
      * 处理 TokenStream（VUE_PROJECT）
@@ -54,6 +63,9 @@ public class JsonMessageStreamHandler {
                             .userId(loginUser.getId())
                             .appId(appId)
                             .build());
+                    // 异步构建 vue 项目
+                    String projectDir = String.format("%s/vue_project_%s", CODE_OUTPUT_ROOT_DIR, appId);
+                    vueProjectBuilder.buildProjectAsync(new File(projectDir));
                 })
                 .doOnError(error -> {
                     // 如果AI回复失败，也要记录错误消息
