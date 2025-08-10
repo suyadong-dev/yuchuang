@@ -9,6 +9,7 @@ import com.yadong.yuchuang.common.ResultUtils;
 import com.yadong.yuchuang.constant.UserConstant;
 import com.yadong.yuchuang.exception.BusinessException;
 import com.yadong.yuchuang.exception.ErrorCode;
+import com.yadong.yuchuang.exception.ThrowUtils;
 import com.yadong.yuchuang.model.dto.app.*;
 import com.yadong.yuchuang.model.entity.User;
 import com.yadong.yuchuang.model.vo.AppVO;
@@ -16,6 +17,7 @@ import com.yadong.yuchuang.service.AppService;
 import com.yadong.yuchuang.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
@@ -79,6 +81,22 @@ public class AppController {
         String result = appService.deployApp(appDeployRequest.getAppId(), loginUser);
         // 返回结果
         return ResultUtils.success(result);
+    }
+
+    /**
+     * 下载项目代码
+     *
+     * @param appId    应用id
+     * @param request  请求
+     * @param response 响应
+     */
+    @GetMapping("/download/{appId}")
+    @AuthCheck(mustRole = UserConstant.DEFAULT_ROLE)
+    public void downloadProjectCode(@PathVariable long appId, HttpServletRequest request,
+                                    HttpServletResponse response) {
+        ThrowUtils.throwIf(appId <= 0, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        appService.downloadAppCode(appId, loginUser, response);
     }
 
     /**

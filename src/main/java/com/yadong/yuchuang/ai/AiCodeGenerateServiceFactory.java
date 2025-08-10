@@ -88,7 +88,8 @@ public class AiCodeGenerateServiceFactory {
                 .chatMemoryStore(redisChatMemoryStore)
                 .build();
         // 加载历史对话到缓存中
-        chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, 20);
+        int count = chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, 20);
+        log.info("加载历史消息成功，共加载{}条", count);
         return switch (codeGenTypeEnum) {
             // Vue项目生成使用推理模型
             case VUE_PROJECT -> AiServices.builder(AiCodeGenerateService.class)

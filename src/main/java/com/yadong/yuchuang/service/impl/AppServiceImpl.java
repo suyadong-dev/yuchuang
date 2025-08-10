@@ -24,11 +24,10 @@ import com.yadong.yuchuang.model.enums.CodeGenTypeEnum;
 import com.yadong.yuchuang.model.enums.UserRoleEnum;
 import com.yadong.yuchuang.model.vo.AppVO;
 import com.yadong.yuchuang.model.vo.UserVO;
-import com.yadong.yuchuang.service.AppService;
-import com.yadong.yuchuang.service.ChatHistoryService;
-import com.yadong.yuchuang.service.UserService;
+import com.yadong.yuchuang.service.*;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -60,6 +59,12 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Resource
     private VueProjectBuilder vueProjectBuilder;
+
+    @Resource
+    private ScreenShotService screenShotService;
+
+    @Resource
+    private ProjectDownloadService projectDownloadService;
 
     /**
      * 聊天生成代码
@@ -152,7 +157,55 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         this.getMapper().update(newApp);
 
         // 8.返回可访问的url路径
-        return AppConstant.CODE_DEPLOY_HOST + "/" + app.getDeployKey();
+        String appWebUrl = AppConstant.CODE_DEPLOY_HOST + "/" + app.getDeployKey();
+        // 9.异步生成截图并更新应用封面
+        generateAndUpdateAppCoverAsync(appId, appWebUrl);
+        return appWebUrl;
+    }
+
+    /**
+     * 下载应用代码
+     *
+     * @param appId     应用id
+     * @param loginUser 当前登录用户
+     * @param response  响应
+     */
+    @Override
+    public void downloadAppCode(long appId, User loginUser, HttpServletResponse response) {
+        // 1.获取app
+        App app = this.getById(appId);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+        // 2.仅管理员和应用创建者可以下载
+        if (app.getUserId() != loginUser.getId() && !loginUser.getUserRole().equals(UserRoleEnum.ADMIN.getValue())) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+        }
+        // 3.构建项目目录
+        String projectDir = String.format("%s/%s_%s", AppConstant.CODE_OUTPUT_ROOT_DIR, app.getCodeGenType(), appId);
+        // 4.检查目录是否存在
+        if (!FileUtil.exist(projectDir) || !FileUtil.isDirectory(projectDir)) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "应用代码不存在，请先生成代码");
+        }
+        // 5.下载项目
+        projectDownloadService.downloadProjectAsZip(projectDir, String.valueOf(appId), response);
+    }
+
+    /**
+     * 异步生成截图并更新应用封面
+     */
+    @Override
+    public void generateAndUpdateAppCoverAsync(long appId, String appWebUrl) {
+        // 使用虚拟线程异步更新应用封面
+        Thread.ofVirtual().start(() -> {
+            // 1.生成截图
+            String coverUrl = screenShotService.generateAndUploadScreenshot(appWebUrl);
+            // 2.构造app对象
+            App app = new App();
+            app.setCover(coverUrl);
+            app.setId(appId);
+            // 3.更新数据库
+            boolean isSuccess = this.updateById(app);
+            ThrowUtils.throwIf(!isSuccess, ErrorCode.OPERATION_ERROR, "更新应用封面失败");
+        });
     }
 
     /**

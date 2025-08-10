@@ -7,9 +7,15 @@ import com.yadong.yuchuang.model.entity.App;
 import com.yadong.yuchuang.model.entity.User;
 import com.yadong.yuchuang.model.vo.AppVO;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import reactor.core.publisher.Flux;
 
 public interface AppService extends IService<App> {
+
+    /**
+     * 异步生成应用封面
+     */
+    void generateAndUpdateAppCoverAsync(long appId, String appWebUrl);
 
     /**
      * 创建应用
@@ -74,4 +80,13 @@ public interface AppService extends IService<App> {
      * @return 可访问的url路径
      */
     String deployApp(Long appId, User loginUser);
+
+    /**
+     * 下载应用代码
+     *
+     * @param appId     应用id
+     * @param loginUser 当前登录用户
+     * @param response  响应
+     */
+    void downloadAppCode(long appId, User loginUser, HttpServletResponse response);
 }

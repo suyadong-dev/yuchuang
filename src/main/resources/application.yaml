@@ -42,3 +42,12 @@ knife4j:
 logging:
   level:
     root: INFO
+
+# 对象存储配置
+cos:
+  client:
+    host: cos.ap-guangzhou.myqcloud.com
+    secretId: <Your SecretId>
+    secretKey: <Your SecretKey>
+    region: ap-guangzhou
+    bucket: <Your BucketName>
