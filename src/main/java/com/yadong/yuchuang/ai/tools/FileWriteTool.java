@@ -3,17 +3,20 @@ package com.yadong.yuchuang.ai.tools;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.io.IORuntimeException;
 import cn.hutool.core.util.CharsetUtil;
+import cn.hutool.json.JSONObject;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 
 import static com.yadong.yuchuang.constant.AppConstant.CODE_OUTPUT_ROOT_DIR;
 
 @Slf4j
-public class FileWriteTool {
+@Component
+public class FileWriteTool extends BaseTool {
     /**
      * 文件写入工具
      * 支持 AI 将生成的代码写入到文件中
@@ -44,7 +47,26 @@ public class FileWriteTool {
         }
     }
 
-//    public static void main(String[] args) {
-//        writeFile("index.vue", "This is a test2", 1);
-//    }
+    @Override
+    protected String getToolName() {
+        return "writeFile";
+    }
+
+    @Override
+    protected String getDisplayName() {
+        return "写入文件6666";
+    }
+
+    @Override
+    public String generateToolExecutionResult(JSONObject arguments) {
+        String relativeFilePath = arguments.getStr("relativeFilePath");
+        String suffix = FileUtil.getSuffix(relativeFilePath);
+        String content = arguments.getStr("content");
+        return String.format("""
+                [66666工具调用] %s %s
+                ```%s
+                %s
+                ```
+                """, getDisplayName(), relativeFilePath, suffix, content);
+    }
 }

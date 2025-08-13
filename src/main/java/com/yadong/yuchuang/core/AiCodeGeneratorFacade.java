@@ -96,16 +96,19 @@ public class AiCodeGeneratorFacade {
                         // AI 响应消息，如代码生成完毕
                         AiResponseMessage partialResponse = new AiResponseMessage(s);
                         sink.next(JSONUtil.toJsonStr(partialResponse));
+                        log.info("AI 响应：{}", s);
                     })
                     // 工具执行请求
                     .onPartialToolExecutionRequest((idx, toolExecutionRequest) -> {
                         ToolRequestMessage toolRequestMessage = new ToolRequestMessage(toolExecutionRequest);
                         sink.next(JSONUtil.toJsonStr(toolRequestMessage));
+                        log.info("工具执行请求：{}", toolExecutionRequest);
                     })
                     .onToolExecuted(toolExecution -> {
                         // 工具调用完毕消息
                         ToolExecutedMessage toolExecutedMessage = new ToolExecutedMessage(toolExecution);
                         sink.next(JSONUtil.toJsonStr(toolExecutedMessage));
+                        log.info("工具调用完毕：{}", toolExecution);
                     })
                     .onCompleteResponse(chatResponse -> sink.complete())
                     .onError(throwable -> {

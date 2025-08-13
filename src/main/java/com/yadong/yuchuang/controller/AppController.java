@@ -2,6 +2,7 @@ package com.yadong.yuchuang.controller;
 
 import cn.hutool.json.JSONUtil;
 import com.mybatisflex.core.paginate.Page;
+import com.yadong.yuchuang.ai.AiCodeGenTypeRoutingServiceFactory;
 import com.yadong.yuchuang.annonation.AuthCheck;
 import com.yadong.yuchuang.common.BaseResponse;
 import com.yadong.yuchuang.common.DeleteRequest;
@@ -107,7 +108,8 @@ public class AppController {
         if (appAddRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        long result = appService.addApp(appAddRequest, request);
+        User loginUser = userService.getLoginUser(request);
+        long result = appService.addApp(appAddRequest, loginUser);
         return ResultUtils.success(result);
     }
 

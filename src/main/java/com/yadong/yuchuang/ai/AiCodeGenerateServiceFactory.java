@@ -2,7 +2,7 @@ package com.yadong.yuchuang.ai;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.yadong.yuchuang.ai.tools.FileWriteTool;
+import com.yadong.yuchuang.ai.tools.ToolManager;
 import com.yadong.yuchuang.model.enums.CodeGenTypeEnum;
 import com.yadong.yuchuang.service.ChatHistoryService;
 import dev.langchain4j.community.store.memory.chat.redis.RedisChatMemoryStore;
@@ -48,13 +48,26 @@ public class AiCodeGenerateServiceFactory {
     @Resource
     private ChatHistoryService chatHistoryService;
 
+    // 工具管理器
+    @Resource
+    private ToolManager toolManager;
+
+    /**
+     * AI 服务实例缓存
+     * 缓存策略：
+     * - 最大缓存 1000 个实例
+     * - 写入后 30 分钟过期
+     * - 访问后 10 分钟过期
+     */
     private final Cache<String, AiCodeGenerateService> CACHE = Caffeine.newBuilder()
-            .maximumSize(10_000)
+            .maximumSize(1000)
             .expireAfterWrite(Duration.ofMinutes(30))
+            .expireAfterAccess(Duration.ofMinutes(10))
             .removalListener((key, value, cause) -> {
-                log.info("移除缓存，key：{}，value：{}，cause：{}", key, value, cause);
+                log.debug("AI 服务实例被移除，缓存键: {}, 原因: {}", key, cause);
             })
             .build();
+
 
     /**
      * 获取app对应的AiCodeGenerateService（为了兼容老逻辑）
@@ -84,7 +97,7 @@ public class AiCodeGenerateServiceFactory {
         // 创建缓存模型
         ChatMemory chatMemory = MessageWindowChatMemory.builder()
                 .id(appId)
-                .maxMessages(10)
+                .maxMessages(20)
                 .chatMemoryStore(redisChatMemoryStore)
                 .build();
         // 加载历史对话到缓存中
@@ -93,9 +106,10 @@ public class AiCodeGenerateServiceFactory {
         return switch (codeGenTypeEnum) {
             // Vue项目生成使用推理模型
             case VUE_PROJECT -> AiServices.builder(AiCodeGenerateService.class)
+                    .chatModel(model)
                     .streamingChatModel(reasoningStreamingChatModel)
                     .chatMemoryProvider(memoryId -> chatMemory)
-                    .tools(new FileWriteTool())
+                    .tools(toolManager.getAllTools())
                     // 幻觉工具名称策略
                     .hallucinatedToolNameStrategy(toolExecutionRequest ->
                             ToolExecutionResultMessage.from(toolExecutionRequest,

@@ -7,6 +7,9 @@ import cn.hutool.core.util.StrUtil;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
+import com.yadong.yuchuang.ai.AiCodeGenTypeRoutingService;
+import com.yadong.yuchuang.ai.AiCodeGenTypeRoutingServiceFactory;
+import com.yadong.yuchuang.ai.model.AppProperty;
 import com.yadong.yuchuang.constant.AppConstant;
 import com.yadong.yuchuang.core.AiCodeGeneratorFacade;
 import com.yadong.yuchuang.core.builder.VueProjectBuilder;
@@ -65,6 +68,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Resource
     private ProjectDownloadService projectDownloadService;
+
+    @Resource
+    private AiCodeGenTypeRoutingServiceFactory aiCodeGenTypeRoutingServiceFactory;
 
     /**
      * 聊天生成代码
@@ -212,34 +218,50 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
      * 添加应用
      */
     @Override
-    public long addApp(AppAddRequest appAddRequest, HttpServletRequest request) {
+    public long addApp(AppAddRequest appAddRequest, User loginUser) {
         // 1. 参数校验
-        if (appAddRequest == null) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR);
-        }
+        ThrowUtils.throwIf(appAddRequest == null, ErrorCode.PARAMS_ERROR);
         String initPrompt = appAddRequest.getInitPrompt();
-        if (initPrompt == null) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数不能为空");
-        }
-        User loginUser = userService.getLoginUser(request);
+        ThrowUtils.throwIf(StrUtil.isBlank(initPrompt), ErrorCode.PARAMS_ERROR, "请输入初始提示词");
         // 2. 创建App对象
         App app = new App();
         BeanUtil.copyProperties(appAddRequest, app);
         app.setUserId(loginUser.getId());
-        // 设置app的名称为提示词前12位
+        // 3.获取 AI 路由服务
+        AiCodeGenTypeRoutingService aiRoutingService = aiCodeGenTypeRoutingServiceFactory.getAiCodeGenTypeRoutingService();
         app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
-        // TODO 待删除，临时使用
-        app.setCodeGenType(CodeGenTypeEnum.VUE_PROJECT.getValue());
-        // 3.生成部署标识
+        // 4.调用 AI 服务生成应用名称和代码生成类型
+        AppProperty appProperty = aiRoutingService.generateAppProperty(initPrompt);
+        // 4.1设置应用名称
+        app.setAppName(appProperty.getAppName());
+        // 4.2路由代码生成类型
+        app.setCodeGenType(appProperty.getCodeGenType().getValue());
+        // 5.生成部署标识
         app.setDeployKey(RandomUtil.randomString(6));
         app.setCreateTime(LocalDateTime.now()); // 设置创建时间
-        // 4.写入数据库
+        // 6.写入数据库
         boolean result = this.save(app);
-        if (!result) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "创建失败");
-        }
-        // 5.返回应用id
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "创建失败");
+        // 7.返回应用id
         return app.getId();
+    }
+
+    @Deprecated
+    private void generateAppName(AiCodeGenTypeRoutingService aiRoutingService, App app, String initPrompt) {
+        // 1.拼接给 AI 的用户提示词
+        String promptPrefix = "根据下列应用需求提示词，生成应用名称\n" +
+                "```text";
+        String userMessage = promptPrefix + initPrompt;
+        String appName;
+        try {
+            // 2.调用 AI 获取应用名称
+            appName = aiRoutingService.generateAppName(userMessage);
+            log.info("应用名称：{}", appName);
+            app.setAppName(appName);
+        } catch (Exception e) {
+            // 3.获取应用名称失败，使用应用初始化提示词的前 12 个字符作为应用名称
+            app.setAppName(initPrompt.substring(0, 12));
+        }
     }
 
     /**
