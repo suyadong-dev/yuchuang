@@ -8,6 +8,7 @@ import com.yadong.yuchuang.ai.model.MultiFileCodeResult;
 import com.yadong.yuchuang.ai.model.message.AiResponseMessage;
 import com.yadong.yuchuang.ai.model.message.ToolExecutedMessage;
 import com.yadong.yuchuang.ai.model.message.ToolRequestMessage;
+import com.yadong.yuchuang.core.builder.VueProjectBuilder;
 import com.yadong.yuchuang.core.parser.CodeParserExecutor;
 import com.yadong.yuchuang.core.saver.CodeFileSaverExecutor;
 import com.yadong.yuchuang.exception.BusinessException;
@@ -23,6 +24,8 @@ import reactor.core.publisher.Flux;
 
 import java.io.File;
 
+import static com.yadong.yuchuang.constant.AppConstant.CODE_OUTPUT_ROOT_DIR;
+
 
 /**
  * 代码生成门面类，一行代码生成并保存代码
@@ -34,6 +37,9 @@ public class AiCodeGeneratorFacade {
     @Resource
     @Lazy
     private AiCodeGenerateServiceFactory aiCodeGenerateServiceFactory;
+
+    @Resource
+    private VueProjectBuilder vueProjectBuilder;
 
 
     /**
@@ -78,7 +84,7 @@ public class AiCodeGeneratorFacade {
             }
             case VUE_PROJECT -> {
                 TokenStream tokenStream = aiCodeGenerateService.generateVueProjectCodeStream(appId, userMessage);
-                return processTokenSteam(tokenStream);
+                return processTokenSteam(tokenStream, appId);
             }
             default -> throw new BusinessException(ErrorCode.SYSTEM_ERROR, "不支持的代码生成类型");
         }
@@ -90,7 +96,7 @@ public class AiCodeGeneratorFacade {
      * @param tokenStream AI 生成的流
      * @return Flux流
      */
-    private Flux<String> processTokenSteam(TokenStream tokenStream) {
+    private Flux<String> processTokenSteam(TokenStream tokenStream, long appId) {
         return Flux.create(sink -> {
             tokenStream.onPartialResponse(s -> {
                         // AI 响应消息，如代码生成完毕
@@ -110,7 +116,12 @@ public class AiCodeGeneratorFacade {
                         sink.next(JSONUtil.toJsonStr(toolExecutedMessage));
                         log.info("工具调用完毕：{}", toolExecution);
                     })
-                    .onCompleteResponse(chatResponse -> sink.complete())
+                    .onCompleteResponse(chatResponse -> {
+                        // 同步构建 vue 项目
+                        String projectDir = String.format("%s/vue_project_%s", CODE_OUTPUT_ROOT_DIR, appId);
+                        vueProjectBuilder.buildProject(new File(projectDir));
+                        sink.complete();
+                    })
                     .onError(throwable -> {
                         throwable.printStackTrace();
                         sink.error(throwable);

@@ -2,7 +2,6 @@ package com.yadong.yuchuang.controller;
 
 import cn.hutool.json.JSONUtil;
 import com.mybatisflex.core.paginate.Page;
-import com.yadong.yuchuang.ai.AiCodeGenTypeRoutingServiceFactory;
 import com.yadong.yuchuang.annonation.AuthCheck;
 import com.yadong.yuchuang.common.BaseResponse;
 import com.yadong.yuchuang.common.DeleteRequest;
@@ -14,11 +13,14 @@ import com.yadong.yuchuang.exception.ThrowUtils;
 import com.yadong.yuchuang.model.dto.app.*;
 import com.yadong.yuchuang.model.entity.User;
 import com.yadong.yuchuang.model.vo.AppVO;
+import com.yadong.yuchuang.ratelimiter.annotation.RateLimit;
+import com.yadong.yuchuang.ratelimiter.enums.RateLimitType;
 import com.yadong.yuchuang.service.AppService;
 import com.yadong.yuchuang.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
@@ -39,6 +41,7 @@ public class AppController {
     private UserService userService;
 
     @GetMapping(value = "/chat/gen/code", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @RateLimit(rate = 5, rateInterval = 60, type = RateLimitType.USER)
     public Flux<ServerSentEvent<String>> chatToGenCode(
             @RequestParam Long appId,
             @RequestParam String message,
@@ -169,6 +172,9 @@ public class AppController {
      * 分页查询精选应用列表
      */
     @PostMapping("/list/featured")
+    @Cacheable(value = "featured_app_page",
+            key = "T(com.yadong.yuchuang.utils.CacheUtil).getCacheKey(#appQueryRequest)",
+            condition = "#appQueryRequest.pageNum <= 10")
     public BaseResponse<Page<AppVO>> listFeaturedAppsByPage(@RequestBody AppQueryRequest appQueryRequest) {
         if (appQueryRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);

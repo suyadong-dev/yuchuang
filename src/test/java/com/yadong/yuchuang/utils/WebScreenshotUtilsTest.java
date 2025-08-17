@@ -15,7 +15,7 @@ class WebScreenshotUtilsTest {
 
     @Test
     public void testScreenshot() {
-        String imagePath = WebScreenshotUtils.saveWebPageScreenshot("https://www.baidu.com");
+        String imagePath = WebScreenshotUtil.saveWebPageScreenshot("https://www.baidu.com");
         Assertions.assertNotNull(imagePath);
         // 上传图片到COS
         String url = cosManager.uploadPicture("test.png", new File(imagePath));

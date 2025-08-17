@@ -4,6 +4,7 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
@@ -41,6 +42,7 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -182,7 +184,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         App app = this.getById(appId);
         ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
         // 2.仅管理员和应用创建者可以下载
-        if (app.getUserId() != loginUser.getId() && !loginUser.getUserRole().equals(UserRoleEnum.ADMIN.getValue())) {
+        if (!Objects.equals(app.getUserId(), loginUser.getId()) && !loginUser.getUserRole().equals(UserRoleEnum.ADMIN.getValue())) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
         // 3.构建项目目录
@@ -229,13 +231,20 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         app.setUserId(loginUser.getId());
         // 3.获取 AI 路由服务
         AiCodeGenTypeRoutingService aiRoutingService = aiCodeGenTypeRoutingServiceFactory.getAiCodeGenTypeRoutingService();
-        app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
-        // 4.调用 AI 服务生成应用名称和代码生成类型
-        AppProperty appProperty = aiRoutingService.generateAppProperty(initPrompt);
-        // 4.1设置应用名称
-        app.setAppName(appProperty.getAppName());
-        // 4.2路由代码生成类型
-        app.setCodeGenType(appProperty.getCodeGenType().getValue());
+        try {
+            // 4.调用 AI 服务生成应用名称和代码生成类型
+            String jsonStr = aiRoutingService.generateAppProperty(initPrompt);
+            AppProperty appProperty = JSONUtil.toBean(jsonStr, AppProperty.class);
+            // 4.1设置应用名称
+            app.setAppName(appProperty.getAppName());
+            // 4.2路由代码生成类型
+            app.setCodeGenType(appProperty.getCodeGenType().getValue());
+        } catch (Exception e) {
+            log.error("生成应用名称和代码生成类型失败：{}", e.getMessage());
+            // 4.3如果生成失败走默认逻辑
+            app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
+            app.setCodeGenType(CodeGenTypeEnum.HTML.getValue());
+        }
         // 5.生成部署标识
         app.setDeployKey(RandomUtil.randomString(6));
         app.setCreateTime(LocalDateTime.now()); // 设置创建时间

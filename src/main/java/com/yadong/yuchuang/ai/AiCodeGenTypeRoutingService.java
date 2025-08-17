@@ -1,6 +1,5 @@
 package com.yadong.yuchuang.ai;
 
-import com.yadong.yuchuang.ai.model.AppProperty;
 import com.yadong.yuchuang.model.enums.CodeGenTypeEnum;
 import dev.langchain4j.service.SystemMessage;
 
@@ -28,5 +27,5 @@ public interface AiCodeGenTypeRoutingService {
      * AI 根据提示词生成应用属性，包括应用名称和生成类型
      */
     @SystemMessage(fromResource = "prompt/app-property-system-message.txt")
-    AppProperty generateAppProperty(String prompt);
+    String generateAppProperty(String prompt);
 }

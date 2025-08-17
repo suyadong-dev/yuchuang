@@ -54,7 +54,7 @@ public class FileWriteTool extends BaseTool {
 
     @Override
     protected String getDisplayName() {
-        return "写入文件6666";
+        return "写入文件";
     }
 
     @Override
@@ -63,7 +63,7 @@ public class FileWriteTool extends BaseTool {
         String suffix = FileUtil.getSuffix(relativeFilePath);
         String content = arguments.getStr("content");
         return String.format("""
-                [66666工具调用] %s %s
+                [工具调用] %s %s
                 ```%s
                 %s
                 ```

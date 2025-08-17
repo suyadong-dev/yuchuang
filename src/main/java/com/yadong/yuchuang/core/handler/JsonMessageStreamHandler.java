@@ -29,8 +29,6 @@ import static com.yadong.yuchuang.constant.AppConstant.CODE_OUTPUT_ROOT_DIR;
 @Slf4j
 @Component
 public class JsonMessageStreamHandler {
-    @Resource
-    private VueProjectBuilder vueProjectBuilder;
 
     /**
      * 工具管理器
@@ -70,9 +68,6 @@ public class JsonMessageStreamHandler {
                             .userId(loginUser.getId())
                             .appId(appId)
                             .build());
-                    // 异步构建 vue 项目
-                    String projectDir = String.format("%s/vue_project_%s", CODE_OUTPUT_ROOT_DIR, appId);
-                    vueProjectBuilder.buildProjectAsync(new File(projectDir));
                 })
                 .doOnError(error -> {
                     // 如果AI回复失败，也要记录错误消息

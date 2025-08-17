@@ -19,6 +19,7 @@ spring:
       port: 6379
       password:
       ttl: 3600
+      database: 0
 #      username: root
 server:
   port: 8123

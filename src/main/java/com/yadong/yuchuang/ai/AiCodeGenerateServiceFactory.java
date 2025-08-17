@@ -2,9 +2,11 @@ package com.yadong.yuchuang.ai;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.yadong.yuchuang.ai.guardrail.PromptSafetyInputGuardrail;
 import com.yadong.yuchuang.ai.tools.ToolManager;
 import com.yadong.yuchuang.model.enums.CodeGenTypeEnum;
 import com.yadong.yuchuang.service.ChatHistoryService;
+import com.yadong.yuchuang.utils.SpringContextUtil;
 import dev.langchain4j.community.store.memory.chat.redis.RedisChatMemoryStore;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
@@ -14,7 +16,6 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.service.AiServices;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -28,17 +29,8 @@ import java.time.Duration;
 public class AiCodeGenerateServiceFactory {
 
     // 普通对象模型
-    @Resource
+    @Resource(name = "openAiChatModel")
     private ChatModel model;
-
-    // 普通对象模型
-    @Resource
-    private StreamingChatModel openAiStreamingChatModel;
-
-    // 推理模型
-    @Resource
-    @Qualifier("reasoningStreamingChatModel")
-    private StreamingChatModel reasoningStreamingChatModel;
 
     // 缓存模型
     @Resource
@@ -105,23 +97,35 @@ public class AiCodeGenerateServiceFactory {
         log.info("加载历史消息成功，共加载{}条", count);
         return switch (codeGenTypeEnum) {
             // Vue项目生成使用推理模型
-            case VUE_PROJECT -> AiServices.builder(AiCodeGenerateService.class)
-                    .chatModel(model)
-                    .streamingChatModel(reasoningStreamingChatModel)
-                    .chatMemoryProvider(memoryId -> chatMemory)
-                    .tools(toolManager.getAllTools())
-                    // 幻觉工具名称策略
-                    .hallucinatedToolNameStrategy(toolExecutionRequest ->
-                            ToolExecutionResultMessage.from(toolExecutionRequest,
-                                    "Error: there is no tool called" + toolExecutionRequest.name())
-                    )
-                    .build();
+            case VUE_PROJECT -> {
+                // 使用多例模式的推理模型，解决并发问题
+                StreamingChatModel reasoningStreamingChatModel = SpringContextUtil.getBean("reasoningStreamingChatModelPrototype", StreamingChatModel.class);
+                yield AiServices.builder(AiCodeGenerateService.class)
+                        .chatModel(model)
+                        .inputGuardrails(new PromptSafetyInputGuardrail())
+                        .streamingChatModel(reasoningStreamingChatModel)
+                        .chatMemoryProvider(memoryId -> chatMemory)
+                        .tools(toolManager.getAllTools())
+                        // 工具执行的最大次数
+                        .maxSequentialToolsInvocations(30)
+                        // 幻觉工具名称策略
+                        .hallucinatedToolNameStrategy(toolExecutionRequest ->
+                                ToolExecutionResultMessage.from(toolExecutionRequest,
+                                        "Error: there is no tool called" + toolExecutionRequest.name())
+                        )
+                        .build();
+            }
             // 原生html和前端三件套使用普通模型
-            case HTML, MULTI_FILE -> AiServices.builder(AiCodeGenerateService.class)
-                    .chatModel(model)
-                    .streamingChatModel(openAiStreamingChatModel)
-                    .chatMemory(chatMemory)
-                    .build();
+            case HTML, MULTI_FILE -> {
+                // 使用多例模式的StreamingChatModel（非推理模型），解决并发问题
+                StreamingChatModel openAiStreamingChatModel = SpringContextUtil.getBean("streamingChatModelPrototype", StreamingChatModel.class);
+                yield AiServices.builder(AiCodeGenerateService.class)
+                        .chatModel(model)
+                        .inputGuardrails(new PromptSafetyInputGuardrail())
+                        .streamingChatModel(openAiStreamingChatModel)
+                        .chatMemory(chatMemory)
+                        .build();
+            }
         };
     }
 

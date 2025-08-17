@@ -26,7 +26,7 @@ import java.time.Duration;
  * 截图工具类（用来给应用生成封面图）
  */
 @Slf4j
-public class WebScreenshotUtils {
+public class WebScreenshotUtil {
 
     private static final WebDriver webDriver;
 

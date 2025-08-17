@@ -4,7 +4,7 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.RandomUtil;
 import com.yadong.yuchuang.manager.CosManager;
 import com.yadong.yuchuang.service.ScreenShotService;
-import com.yadong.yuchuang.utils.WebScreenshotUtils;
+import com.yadong.yuchuang.utils.WebScreenshotUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,7 +22,7 @@ public class ScreenShotServiceImpl implements ScreenShotService {
     @Override
     public String generateAndUploadScreenshot(String webUrl) {
         // 1.截取网页图片到本地
-        String localFilePath = WebScreenshotUtils.saveWebPageScreenshot(webUrl);
+        String localFilePath = WebScreenshotUtil.saveWebPageScreenshot(webUrl);
         try {
             // 2.上传图片到COS
             String fileName = RandomUtil.randomString(6) + "_compressed.png";

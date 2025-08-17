@@ -67,7 +67,7 @@ public class FileModifyTool extends BaseTool {
 
     @Override
     protected String getDisplayName() {
-        return "修改文件66666";
+        return "修改文件";
     }
 
     @Override
@@ -77,12 +77,12 @@ public class FileModifyTool extends BaseTool {
         String newContent = arguments.getStr("newContent");
         return String.format("""
                  [工具调用66666] %s %s
-                 替换前66666：
+                 替换前：
                  ```
                  %s
                  ```
                 
-                替换后66666：
+                替换后：
                  ```
                  %s
                  ```

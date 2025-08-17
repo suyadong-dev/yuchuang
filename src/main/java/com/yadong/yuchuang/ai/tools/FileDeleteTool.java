@@ -82,12 +82,12 @@ public class FileDeleteTool extends BaseTool {
 
     @Override
     protected String getDisplayName() {
-        return "删除文件66666666666";
+        return "删除文件";
     }
 
     @Override
     public String generateToolExecutionResult(JSONObject arguments) {
         String relativeFilePath = arguments.getStr("relativeFilePath");
-        return String.format(" [工具调用666666666666] %s %s", getDisplayName(), relativeFilePath);
+        return String.format(" [工具调用] %s %s", getDisplayName(), relativeFilePath);
     }
 }

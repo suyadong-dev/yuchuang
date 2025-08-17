@@ -124,7 +124,7 @@ public class FileDirReadTool extends BaseTool {
 
     @Override
     protected String getDisplayName() {
-        return "读取目录6666666";
+        return "读取目录";
     }
 
     @Override
@@ -133,6 +133,6 @@ public class FileDirReadTool extends BaseTool {
         if (StringUtil.isEmpty(relativeFilePath)) {
             relativeFilePath = "根目录";
         }
-        return String.format(" [工具调用66666666666] %s %s", getDisplayName(), relativeFilePath);
+        return String.format(" [工具调用] %s %s", getDisplayName(), relativeFilePath);
     }
 }

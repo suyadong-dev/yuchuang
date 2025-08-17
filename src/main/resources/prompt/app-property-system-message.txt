@@ -27,4 +27,14 @@
 
 ---
 
-请根据用户输入，先输出应用名称（只需要返回一个名称），换行后输出推荐的代码生成类型。
+请返回一个 JSON 对象，包含以下字段：
+- appName: 应用名称（字符串）
+- codeGenType: 代码生成类型，只能是 "html"、"multi_file"、"vue_project"之一
+
+示例：
+{
+  "appName": "答题平台",
+  "codeGenType": "multi_file"
+}
+
+请严格按照 JSON 格式输出，不要添加任何额外说明。

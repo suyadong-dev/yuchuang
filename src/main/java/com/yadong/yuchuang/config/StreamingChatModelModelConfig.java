@@ -8,39 +8,33 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Scope;
 
+
 /**
- * 推理专用流式模型，Vue 项目使用
+ * 通用流式模型配置，HTML、多文件模式使用
  */
-@ConfigurationProperties(prefix = "langchain4j.open-ai.reasoning-streaming-chat-model")
+@ConfigurationProperties(prefix = "langchain4j.open-ai.streaming-chat-model")
 @Configuration
 @Data
-public class ReasoningStreamingChatModelConfig {
+public class StreamingChatModelModelConfig {
     private String apiKey;
 
     private String baseUrl;
 
     private String modelName;
 
-    private int maxTokens;
-
-    private double temperature;
-
     private boolean logRequests;
 
     private boolean logResponses;
 
-
     @Bean
     @Scope("prototype")
-    public StreamingChatModel reasoningStreamingChatModelPrototype() {
+    public StreamingChatModel streamingChatModelPrototype() {
         return OpenAiStreamingChatModel.builder()
-                .apiKey(apiKey)
                 .baseUrl(baseUrl)
+                .apiKey(apiKey)
                 .modelName(modelName)
-                .maxTokens(maxTokens)
-                .temperature(temperature)
-                .logRequests(true)
-                .logResponses(true)
+                .logRequests(logRequests)
+                .logResponses(logResponses)
                 .build();
     }
 

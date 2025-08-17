@@ -51,12 +51,12 @@ public class FileReadTool extends BaseTool {
 
     @Override
     protected String getDisplayName() {
-        return "读取文件666666";
+        return "读取文件";
     }
 
     @Override
     public String generateToolExecutionResult(JSONObject arguments) {
         String relativeFilePath = arguments.getStr("relativeFilePath");
-        return String.format(" [工具调用6666] %s %s", getDisplayName(), relativeFilePath);
+        return String.format(" [工具调用] %s %s", getDisplayName(), relativeFilePath);
     }
 }
