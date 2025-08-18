@@ -1,6 +1,7 @@
 package com.yadong.yuchuang.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
@@ -33,6 +34,7 @@ import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -40,15 +42,16 @@ import reactor.core.publisher.Flux;
 import java.io.File;
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppService {
+
+    @Value("${code.deploy-host:http://localhost}")
+    private String deployHost;
+
     @Resource
     private UserService userService;
 
@@ -165,7 +168,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         this.getMapper().update(newApp);
 
         // 8.返回可访问的url路径
-        String appWebUrl = AppConstant.CODE_DEPLOY_HOST + "/" + app.getDeployKey();
+        String appWebUrl = String.format("%s/%s/", deployHost, app.getDeployKey());
         // 9.异步生成截图并更新应用封面
         generateAndUpdateAppCoverAsync(appId, appWebUrl);
         return appWebUrl;
@@ -292,7 +295,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         App app = this.getById(id);
         ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR);
         // 3. 仅本人或者管理员删除
-        if (!app.getUserId().equals(loginUser.getId()) || !loginUser.getUserRole().equals(UserRoleEnum.ADMIN.getValue())) {
+        if (!app.getUserId().equals(loginUser.getId()) && !loginUser.getUserRole().equals(UserRoleEnum.ADMIN.getValue())) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
     }
@@ -352,6 +355,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         queryWrapper.eq("user_id", loginUser.getId());
         // 3.查询数据库
         Page<App> appPage = this.mapper.paginate(Page.of(appQueryRequest.getPageNum(), appQueryRequest.getPageSize()), queryWrapper);
+        if (appPage == null) {
+            return new Page<>();
+        }
         return convertToAppVOPage(appPage);
     }
 
@@ -469,6 +475,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
      * @return AppVO分页对象
      */
     private Page<AppVO> convertToAppVOPage(Page<App> appPage) {
+        if (appPage == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
         // 1.创建AppVO分页对象
         Page<AppVO> appVOPage = new Page<>(appPage.getPageNumber(), appPage.getPageSize(), appPage.getTotalRow());
         // 2.将App列表转换为AppVO列表
@@ -479,6 +488,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         Set<Long> ids = records.stream()
                 .map(AppVO::getId)
                 .collect(Collectors.toSet());
+        if (CollUtil.isEmpty(ids)) {
+            return appVOPage;
+        }
         // 3.2将id转为 {id：user}
         Map<Long, UserVO> userVOMap = userService.listByIds(ids)
                 .stream()

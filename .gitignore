@@ -1,8 +1,8 @@
 HELP.md
 
 ## Common ##
-将application-local.yaml 忽略
 application-local.yaml
+application-prod.yaml
 temp
 
 

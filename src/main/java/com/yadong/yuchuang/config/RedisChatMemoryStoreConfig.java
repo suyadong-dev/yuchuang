@@ -2,6 +2,7 @@ package com.yadong.yuchuang.config;
 
 import dev.langchain4j.community.store.memory.chat.redis.RedisChatMemoryStore;
 import lombok.Data;
+import opennlp.tools.util.StringUtil;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,11 +22,14 @@ public class RedisChatMemoryStoreConfig {
 
     @Bean
     public RedisChatMemoryStore redisChatMemoryStore() {
-        return RedisChatMemoryStore.builder()
+        RedisChatMemoryStore.Builder redisChatMemoryStore = RedisChatMemoryStore.builder()
                 .host(host)
                 .port(port)
                 .password(password)
-                .ttl(ttl)
-                .build();
+                .ttl(ttl);
+        if (!StringUtil.isEmpty(password)) {
+            redisChatMemoryStore.user("default");
+        }
+        return redisChatMemoryStore.build();
     }
 }

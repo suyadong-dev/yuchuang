@@ -79,7 +79,7 @@ public class User implements Serializable {
     /**
      * 更新时间
      */
-    private LocalDateTime updateIme;
+    private LocalDateTime updateTime;
 
     /**
      * 逻辑删除

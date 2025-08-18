@@ -1,5 +1,6 @@
 package com.yadong.yuchuang.ai;
 
+import cn.hutool.json.JSONUtil;
 import com.yadong.yuchuang.ai.model.AppProperty;
 import com.yadong.yuchuang.model.enums.CodeGenTypeEnum;
 import jakarta.annotation.Resource;
@@ -38,7 +39,8 @@ class AiCodeGenTypeRoutingServiceTest {
     public void testGenerateAppProperty() {
         AiCodeGenTypeRoutingService aiCodeGenTypeRoutingService = aiCodeGenTypeRoutingServiceFactory.getAiCodeGenTypeRoutingService();
         String userPrompt = "做一个电商管理系统，包含用户管理、商品管理、订单管理，需要路由和状态管理";
-        AppProperty appProperty = aiCodeGenTypeRoutingService.generateAppProperty(userPrompt);
+        String json = aiCodeGenTypeRoutingService.generateAppProperty(userPrompt);
+        AppProperty appProperty = JSONUtil.toBean(json, AppProperty.class);
         System.out.println(appProperty.getAppName());
         System.out.println(appProperty.getCodeGenType());
     }
