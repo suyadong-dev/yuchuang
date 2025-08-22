@@ -3,6 +3,7 @@ package com.yadong.yuchuang.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.io.IORuntimeException;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
@@ -283,8 +284,23 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     public boolean deleteApp(Long id, HttpServletRequest request) {
         // 1.参数和权限校验
         checkAuthAndParams(id, request);
-        // 2.删除数据库记录
-        return this.removeById(id);
+        try {
+            // 2.删除数据库记录
+            App app = this.getById(id);
+            this.removeById(id);
+            // 3.删除项目目录
+            String projectDir = String.format("%s/%s_%s", AppConstant.CODE_OUTPUT_ROOT_DIR, app.getCodeGenType(), id);
+            FileUtil.del(projectDir);
+            log.info("删除项目目录成功：{}", projectDir);
+            // 4.删除部署后的目录
+            String deployDir = String.format("%s/%s", AppConstant.CODE_DEPLOY_ROOT_DIR, app.getDeployKey());
+            FileUtil.del(deployDir);
+            log.info("删除部署目录成功：{}", deployDir);
+        } catch (IORuntimeException e) {
+            // 5.失败记录日志，不报错
+            log.error("删除项目目录失败：{}", e.getMessage());
+        }
+        return true;
     }
 
     private void checkAuthAndParams(Long id, HttpServletRequest request) {

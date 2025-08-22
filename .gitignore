@@ -2,7 +2,9 @@ HELP.md
 
 ## Common ##
 application-local.yaml
+# 忽略 application-prod.yaml
 application-prod.yaml
+# 忽略 .gitignore
 temp
 
 

@@ -46,16 +46,22 @@ public class WebScreenshotUtil {
      */
     private static WebDriver initChromeDriver(int width, int height) {
         try {
-            // 自动管理 ChromeDriver
-            WebDriverManager.chromedriver().setup();
-            // 配置 Chrome 选项
+            String systemChromeDriver = "/usr/local/bin/chromedriver";
+
+            if (new File(systemChromeDriver).exists()) {
+                log.info("检测到系统已安装 chromedriver，使用路径: {}", systemChromeDriver);
+                System.setProperty("webdriver.chrome.driver", systemChromeDriver);
+            } else {
+                log.info("未检测到系统 chromedriver，尝试使用 WebDriverManager 自动下载...");
+                WebDriverManager.chromedriver().setup();
+            }
+
             ChromeOptions options = getChromeOptions(width, height);
-            // 创建驱动
             WebDriver driver = new ChromeDriver(options);
-            // 设置页面加载超时
+
             driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(30));
-            // 设置隐式等待
             driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
+
             return driver;
         } catch (Exception e) {
             log.error("初始化 Chrome 浏览器失败", e);
@@ -124,8 +130,8 @@ public class WebScreenshotUtil {
                     ((JavascriptExecutor) webDriver).executeScript("return document.readyState")
                             .equals("complete")
             );
-            // 额外等待一段时间，确保动态内容加载完成
-            Thread.sleep(2000);
+            // 等待动态页面也加载完毕
+            Thread.sleep(5000);
             log.info("页面加载完成");
         } catch (Exception e) {
             log.error("等待页面加载时出现异常，继续执行截图", e);
@@ -151,7 +157,7 @@ public class WebScreenshotUtil {
         // 5.创建临时目录
         String rootPath = String.format("%s/temp/screenshots/%s",
                 System.getProperty("user.dir"), RandomUtil.randomString(8));
-        String originalImagePath = String.format("%s/%s.png", rootPath,RandomUtil.randomString(5));
+        String originalImagePath = String.format("%s/%s.png", rootPath, RandomUtil.randomString(5));
         // 5.保存图片
         saveImage(imageBytes, originalImagePath);
         log.info("截图成功，保存路径为：{}", originalImagePath);

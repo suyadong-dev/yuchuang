@@ -156,7 +156,6 @@
             <artifactId>redisson</artifactId>
             <version>3.50.0</version>
         </dependency>
-
     </dependencies>
 
     <build>

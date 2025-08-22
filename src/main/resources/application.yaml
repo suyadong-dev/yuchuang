@@ -6,7 +6,7 @@ spring:
     timeout: 259200
   # 数据库配置
   datasource:
-    driver-class-name: com.mysql.jdbc.Driver
+    driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/yuchuang?useUnicode=true&characterEncoding=utf-8&useInformationSchema=true
     username: root
     password: 1234
