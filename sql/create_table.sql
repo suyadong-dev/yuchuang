@@ -58,3 +58,24 @@ create table if not exists chat_history
     INDEX idx_createTime (create_time),
     INDEX idx_appId_createTime (app_id, create_time)
 ) comment '对话历史表' collate = utf8mb4_unicode_ci;
+
+-- Token使用记录表
+drop table if exists token_usage;
+create table token_usage
+(
+    id           bigint primary key auto_increment comment 'id',
+    user_id      bigint             not null comment '用户id',
+    app_id       bigint             null comment '应用id',
+    input_tokens int                not null comment '输入token数量',
+    output_tokens int               not null comment '输出token数量',
+    total_tokens int                not null comment '总token数量',
+    call_type    varchar(64)        not null comment '调用类型',
+    content      text               null comment '调用内容',
+    create_time  datetime default CURRENT_TIMESTAMP comment '创建时间',
+    update_time  datetime default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP comment '更新时间',
+    is_delete    tinyint  default 0 not null comment '是否删除',
+    INDEX idx_userId (user_id),
+    INDEX idx_appId (app_id),
+    INDEX idx_createTime (create_time)
+) comment 'Token使用记录表' collate = utf8mb4_unicode_ci;
+

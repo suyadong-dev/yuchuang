@@ -2,6 +2,7 @@ package com.yadong.yuchuang.ai;
 
 import com.yadong.yuchuang.ai.model.HtmlCodeResult;
 import com.yadong.yuchuang.ai.model.MultiFileCodeResult;
+import com.yadong.yuchuang.annonation.RecordTokenUsage;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.TokenStream;
@@ -16,6 +17,7 @@ public interface AiCodeGenerateService {
      * @param userMessage 用户消息
      * @return 响应结果
      */
+    @RecordTokenUsage(type = "CHAT")
     String chat(String userMessage);
 
     /**
@@ -26,6 +28,7 @@ public interface AiCodeGenerateService {
      */
     // @SystemMessage 设置系统消息
     @SystemMessage(fromResource = "prompt/html-system-message.txt")
+    @RecordTokenUsage(type = "GENERATE_HTML")
     HtmlCodeResult generateHtmlCode(String userMessage);
 
     /**
@@ -35,6 +38,7 @@ public interface AiCodeGenerateService {
      * @return 响应结果
      */
     @SystemMessage(fromResource = "prompt/multi-file-system-message.txt")
+    @RecordTokenUsage(type = "GENERATE_MULTI_FILE")
     MultiFileCodeResult generateMultiFileCode(String userMessage);
 
 
@@ -46,6 +50,7 @@ public interface AiCodeGenerateService {
      */
     // @SystemMessage 设置系统消息
     @SystemMessage(fromResource = "prompt/html-system-message.txt")
+    @RecordTokenUsage(type = "GENERATE_HTML_STREAM")
     Flux<String> generateHtmlCodeStream(String userMessage);
 
     /**
@@ -55,6 +60,7 @@ public interface AiCodeGenerateService {
      * @return 响应结果
      */
     @SystemMessage(fromResource = "prompt/multi-file-system-message.txt")
+    @RecordTokenUsage(type = "GENERATE_MULTI_FILE_STREAM")
     Flux<String> generateMultiFileCodeStream(String userMessage);
 
     /**
@@ -65,5 +71,6 @@ public interface AiCodeGenerateService {
      * @return 响应结果
      */
     @SystemMessage(fromResource = "prompt/vue-project-system-message.txt")
+    @RecordTokenUsage(type = "GENERATE_VUE_PROJECT_STREAM")
     TokenStream generateVueProjectCodeStream(@MemoryId long appId, @UserMessage String userMessage);
 }

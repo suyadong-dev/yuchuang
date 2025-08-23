@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yadong.yuchuang.mapper.TokenUsageMapper">
+
+    <!-- 基础结果映射 -->
+    <resultMap id="BaseResultMap" type="com.yadong.yuchuang.model.entity.TokenUsage">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="app_id" property="appId"/>
+        <result column="input_tokens" property="inputTokens"/>
+        <result column="output_tokens" property="outputTokens"/>
+        <result column="total_tokens" property="totalTokens"/>
+        <result column="call_type" property="callType"/>
+        <result column="content" property="content"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="is_deleted" property="isDelete"/>
+    </resultMap>
+
+    <!-- 基本字段 -->
+    <sql id="Base_Column_List">
+        id, user_id, app_id, input_tokens, output_tokens, total_tokens, call_type, content, create_time, update_time, is_deleted
+    </sql>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from token_usage
+        where id = #{id} and is_deleted = 0
+    </select>
+
+
+    <!-- 查询用户在指定时间范围内的Token使用统计 -->
+    <select id="sumTokensByUserIdAndTimeRange" resultType="map">
+        select call_type          as callType,
+               sum(input_tokens)  as inputTokens,
+               sum(output_tokens) as outputTokens,
+               sum(total_tokens)  as totalTokens,
+               count(*)           as callCount
+        from token_usage
+        where user_id = #{userId}
+          and is_delete = 0
+          and create_time between #{startTime} and #{endTime}
+        group by call_type
+    </select>
+
+    <!-- 分页查询用户Token使用记录 -->
+    <select id="selectUserTokenUsagePage" parameterType="map" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from token_usage
+        where user_id = #{userId}
+        and is_deleted = 0
+        <if test="callType != null and callType != ''">
+            and call_type = #{callType}
+        </if>
+        <if test="startTime != null">
+            and create_time >= #{startTime}
+        </if>
+        <if test="endTime != null">
+            <![CDATA[
+                and create_time <= #{endTime}
+            ]]>
+        </if>
+        order by create_time desc
+        limit #{offset}, #{size}
+    </select>
+
+    <!-- 分页查询用户Token使用记录总数 -->
+    <select id="countUserTokenUsage" parameterType="map" resultType="int">
+        select count(*)
+        from token_usage
+        where user_id = #{userId}
+        and is_deleted = 0
+        <if test="callType != null and callType != ''">
+            and call_type = #{callType}
+        </if>
+        <if test="startTime != null">
+            and create_time >= #{startTime}
+        </if>
+        <if test="endTime != null">
+            <![CDATA[
+                and create_time <= #{endTime}
+            ]]>
+        </if>
+    </select>
+
+    <!-- 获取用户在指定时间范围内的Token使用排名 -->
+    <select id="getTokenUsageRankTopN" resultType="java.util.Map">
+        SELECT user_id,
+               sum(input_tokens)  AS input_tokens,
+               sum(output_tokens) AS output_tokens,
+               sum(total_tokens)  AS total_tokens
+        FROM token_usage
+        WHERE create_time
+                  BETWEEN #{startTime} AND #{endTime}
+        GROUP BY user_id
+        ORDER BY total_tokens DESC
+        LIMIT #{n}
+    </select>
+</mapper>

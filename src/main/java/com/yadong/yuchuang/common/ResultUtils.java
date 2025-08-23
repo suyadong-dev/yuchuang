@@ -1,9 +1,6 @@
 package com.yadong.yuchuang.common;
 
 import com.yadong.yuchuang.exception.ErrorCode;
-import lombok.Data;
-
-import java.io.Serializable;
 
 public class ResultUtils {
 
