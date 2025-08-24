@@ -1,12 +1,16 @@
 package com.yadong.yuchuang.config;
 
+import com.yadong.yuchuang.monitor.AiModelMonitorListener;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import jakarta.annotation.Resource;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Scope;
+
+import java.util.List;
 
 /**
  * 推理专用流式模型，Vue 项目使用
@@ -15,6 +19,10 @@ import org.springframework.context.annotation.Scope;
 @Configuration
 @Data
 public class ReasoningStreamingChatModelConfig {
+
+    @Resource
+    private AiModelMonitorListener aiModelMonitorListener;
+
     private String apiKey;
 
     private String baseUrl;
@@ -41,6 +49,7 @@ public class ReasoningStreamingChatModelConfig {
                 .temperature(temperature)
                 .logRequests(true)
                 .logResponses(true)
+                .listeners(List.of(aiModelMonitorListener))
                 .build();
     }
 

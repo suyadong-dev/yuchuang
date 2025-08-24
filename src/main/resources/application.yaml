@@ -52,3 +52,12 @@ cos:
     secretKey: <Your SecretKey>
     region: ap-guangzhou
     bucket: <Your BucketName>
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always

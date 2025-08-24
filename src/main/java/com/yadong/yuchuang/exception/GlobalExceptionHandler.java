@@ -14,6 +14,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.io.IOException;
 import java.util.Map;
+import java.nio.charset.StandardCharsets;
 
 @Hidden
 @RestControllerAdvice
@@ -61,6 +62,12 @@ public class GlobalExceptionHandler {
         if ((accept != null && accept.contains("text/event-stream")) ||
                 uri.contains("/chat/gen/code")) {
             try {
+                // 检查响应是否已提交
+                if (response.isCommitted()) {
+                    log.warn("Response already committed, cannot write SSE error");
+                    return true;
+                }
+                
                 // 设置SSE响应头
                 response.setContentType("text/event-stream");
                 response.setCharacterEncoding("UTF-8");
@@ -75,16 +82,22 @@ public class GlobalExceptionHandler {
                 String errorJson = JSONUtil.toJsonStr(errorData);
                 // 发送业务错误事件（避免与标准error事件冲突）
                 String sseData = "event: business-error\ndata: " + errorJson + "\n\n";
-                response.getWriter().write(sseData);
-                response.getWriter().flush();
+                // 使用getOutputStream()代替getWriter()，避免与响应式流冲突
+                response.getOutputStream().write(sseData.getBytes(StandardCharsets.UTF_8));
+                response.getOutputStream().flush();
                 // 发送结束事件
-                response.getWriter().write("event: done\ndata: {}\n\n");
-                response.getWriter().flush();
+                String doneEvent = "event: done\ndata: {}\n\n";
+                response.getOutputStream().write(doneEvent.getBytes(StandardCharsets.UTF_8));
+                response.getOutputStream().flush();
                 // 表示已处理SSE请求
                 return true;
             } catch (IOException ioException) {
                 log.error("Failed to write SSE error response", ioException);
                 // 即使写入失败，也表示这是SSE请求
+                return true;
+            } catch (IllegalStateException e) {
+                // 捕获getOutputStream()或getWriter()冲突的异常
+                log.error("Response stream already used: {}", e.getMessage());
                 return true;
             }
         }

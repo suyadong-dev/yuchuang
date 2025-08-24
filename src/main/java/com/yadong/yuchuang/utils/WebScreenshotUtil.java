@@ -46,15 +46,16 @@ public class WebScreenshotUtil {
      */
     private static WebDriver initChromeDriver(int width, int height) {
         try {
-            String systemChromeDriver = "/usr/local/bin/chromedriver";
-
-            if (new File(systemChromeDriver).exists()) {
-                log.info("检测到系统已安装 chromedriver，使用路径: {}", systemChromeDriver);
-                System.setProperty("webdriver.chrome.driver", systemChromeDriver);
-            } else {
-                log.info("未检测到系统 chromedriver，尝试使用 WebDriverManager 自动下载...");
-                WebDriverManager.chromedriver().setup();
-            }
+//            String systemChromeDriver = "/usr/local/bin/chromedriver";
+//
+//            if (new File(systemChromeDriver).exists()) {
+//                log.info("检测到系统已安装 chromedriver，使用路径: {}", systemChromeDriver);
+//                System.setProperty("webdriver.chrome.driver", systemChromeDriver);
+//            } else {
+//                log.info("未检测到系统 chromedriver，尝试使用 WebDriverManager 自动下载...");
+//                WebDriverManager.chromedriver().setup();
+//            }
+            WebDriverManager.chromedriver().setup();
 
             ChromeOptions options = getChromeOptions(width, height);
             WebDriver driver = new ChromeDriver(options);

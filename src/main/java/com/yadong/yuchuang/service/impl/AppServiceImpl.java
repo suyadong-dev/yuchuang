@@ -30,6 +30,8 @@ import com.yadong.yuchuang.model.enums.CodeGenTypeEnum;
 import com.yadong.yuchuang.model.enums.UserRoleEnum;
 import com.yadong.yuchuang.model.vo.AppVO;
 import com.yadong.yuchuang.model.vo.UserVO;
+import com.yadong.yuchuang.monitor.MonitorContext;
+import com.yadong.yuchuang.monitor.MonitorContextHolder;
 import com.yadong.yuchuang.service.*;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
@@ -43,7 +45,10 @@ import reactor.core.publisher.Flux;
 import java.io.File;
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -84,7 +89,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
      * @param appId     应用id
      * @param message   用户提示词
      * @param loginUser 当前登录用户
-     * @return
+     * @return AI 的流式响应
      */
     @Override
     public Flux<String> chatToGenCode(Long appId, String message, User loginUser) {
@@ -110,9 +115,17 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             log.info("保存用户消息失败");
         }
 
-        // 5. 调用 AI 服务生成代码
+        // 5.将应用id和用户id保存在ThreadLocal
+        MonitorContext monitorContext = new MonitorContext(appId, loginUser.getId());
+        MonitorContextHolder.set(monitorContext);
+
+        // 6. 调用 AI 服务生成代码
         Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, appId, appType);
-        return steamHandlerExecutor.execute(codeStream, chatHistoryService, loginUser, appId, appType);
+        return steamHandlerExecutor.execute(codeStream, chatHistoryService, loginUser, appId, appType)
+                .doFinally(signalType -> {
+                    // 释放线程上下文信息，防止内存泄漏
+                    MonitorContextHolder.clear();
+                });
     }
 
     @Override
