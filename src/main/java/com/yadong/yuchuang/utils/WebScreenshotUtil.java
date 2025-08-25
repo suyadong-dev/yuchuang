@@ -17,9 +17,11 @@ import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.io.File;
+import java.net.URL;
 import java.time.Duration;
 
 /**
@@ -46,19 +48,15 @@ public class WebScreenshotUtil {
      */
     private static WebDriver initChromeDriver(int width, int height) {
         try {
-//            String systemChromeDriver = "/usr/local/bin/chromedriver";
-//
-//            if (new File(systemChromeDriver).exists()) {
-//                log.info("检测到系统已安装 chromedriver，使用路径: {}", systemChromeDriver);
-//                System.setProperty("webdriver.chrome.driver", systemChromeDriver);
-//            } else {
-//                log.info("未检测到系统 chromedriver，尝试使用 WebDriverManager 自动下载...");
-//                WebDriverManager.chromedriver().setup();
-//            }
-            WebDriverManager.chromedriver().setup();
-
             ChromeOptions options = getChromeOptions(width, height);
-            WebDriver driver = new ChromeDriver(options);
+
+            String chromeUrl = System.getenv("CHROME_DEBUG_URL");
+            if (StrUtil.isBlank(chromeUrl)) {
+                // 默认兜底为 Selenium standalone-chrome 的地址
+                chromeUrl = "http://chrome:4444/wd/hub";
+            }
+            WebDriver driver = new RemoteWebDriver(new URL(chromeUrl), options);
+
 
             driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(30));
             driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));

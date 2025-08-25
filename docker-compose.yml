@@ -1,0 +1,60 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: yuchuang
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+
+  redis:
+    image: redis:7.2
+    container_name: redis
+    restart: always
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    volumes:
+      - ./data/redis:/data
+
+  chrome:
+    image: selenium/standalone-chrome:120.0
+    container_name: chrome
+    shm_size: 2g
+    ports:
+      - "4444:4444"
+
+  app:
+    build: .
+    container_name: myapp
+    restart: always
+    ports:
+      - "8123:8123"
+    environment:
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      QWEN_API_KEY: ${QWEN_API_KEY}
+      COS_SECRET_ID: ${COS_SECRET_ID}
+      COS_SECRET_KEY: ${COS_SECRET_KEY}
+      DOC_USERNAME: ${DOC_USERNAME}
+      DOC_PASSWORD: ${DOC_PASSWORD}
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      # 改成 Selenium WebDriver 协议的地址
+      CHROME_DEBUG_URL: http://chrome:4444/wd/hub
+    volumes:
+      - /opt/1panel/www/sites/yuchuang/temp/code_output:/app/temp/code_output
+      - /opt/1panel/www/sites/yuchuang/temp/code_deploy:/app/temp/
+      - ./logs:/app/logs
+    depends_on:
+      - mysql
+      - redis
+      - chrome
+    command: >
+      sh -c '
+      java -Dspring.profiles.active=prod -jar /app/app.jar 2> /app/logs/app-error.log
+      '
