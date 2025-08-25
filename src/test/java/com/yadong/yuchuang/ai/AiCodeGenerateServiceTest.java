@@ -12,12 +12,6 @@ class AiCodeGenerateServiceTest {
     private AiCodeGenerateService aiCodeGenerateService;
 
     @Test
-    void testChat() {
-        String result = aiCodeGenerateService.chat("写一个java程序，打印一个hello world");
-        System.out.println(result);
-    }
-
-    @Test
     void generateHtmlCode() {
         HtmlCodeResult htmlCodeResult = aiCodeGenerateService.generateHtmlCode("写一个登录页面，代码不超过二十行");
         Assertions.assertNotNull(htmlCodeResult);

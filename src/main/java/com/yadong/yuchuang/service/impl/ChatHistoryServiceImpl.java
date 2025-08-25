@@ -107,12 +107,7 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
         App app = appService.getById(appId);
         ThrowUtils.throwIf(app == null, ErrorCode.PARAMS_ERROR, "app不存在");
 
-        // 3.校验用户是否具有权限
-        if (!loginUser.getUserRole().equals("admin") && !loginUser.getId().equals(app.getUserId())) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限查看历史对话");
-        }
-
-        // 4.构造查询条件
+        // 3.构造查询条件
         // 按照时间降序是因为要查询的是 <= lastCreateTime 并且离现在的时间最近的记录
         // 正序的查出来的结果是按时间升序的，第一条离当前时间最远，而limit是从第一条开始取，所以需要倒序
         QueryWrapper queryWrapper = QueryWrapper.create()

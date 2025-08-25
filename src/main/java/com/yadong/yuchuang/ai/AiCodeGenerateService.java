@@ -12,15 +12,6 @@ import reactor.core.publisher.Flux;
 public interface AiCodeGenerateService {
 
     /**
-     * 测试接口
-     *
-     * @param userMessage 用户消息
-     * @return 响应结果
-     */
-    @RecordTokenUsage(type = "CHAT")
-    String chat(String userMessage);
-
-    /**
      * 生成单页面 HTML 代码
      *
      * @param userMessage 用户消息

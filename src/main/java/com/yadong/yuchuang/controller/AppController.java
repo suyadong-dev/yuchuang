@@ -121,10 +121,13 @@ public class AppController {
      */
     @PostMapping("/delete")
     public BaseResponse<Boolean> deleteApp(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
-        if (deleteRequest == null || deleteRequest.getId() <= 0) {
+        if (deleteRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        boolean result = appService.deleteApp(deleteRequest.getId(), request);
+        Long id = deleteRequest.getId();
+        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        boolean result = appService.deleteApp(deleteRequest.getId(), loginUser);
         return ResultUtils.success(result);
     }
 
@@ -144,11 +147,12 @@ public class AppController {
      * 根据id获取应用详情
      */
     @GetMapping("/get/vo")
-    public BaseResponse<AppVO> getAppVOById(long id, HttpServletRequest request) {
+    public BaseResponse<AppVO> getAppVOById(@RequestParam long id, HttpServletRequest request) {
         if (id <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        AppVO appVO = appService.getAppById(id, request);
+        User loginUser = userService.getLoginUser(request);
+        AppVO appVO = appService.getAppById(id, loginUser);
         return ResultUtils.success(appVO);
     }
 

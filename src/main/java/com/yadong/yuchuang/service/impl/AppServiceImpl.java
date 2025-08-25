@@ -272,34 +272,20 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         return app.getId();
     }
 
-    @Deprecated
-    private void generateAppName(AiCodeGenTypeRoutingService aiRoutingService, App app, String initPrompt) {
-        // 1.拼接给 AI 的用户提示词
-        String promptPrefix = "根据下列应用需求提示词，生成应用名称\n" +
-                "```text";
-        String userMessage = promptPrefix + initPrompt;
-        String appName;
-        try {
-            // 2.调用 AI 获取应用名称
-            appName = aiRoutingService.generateAppName(userMessage);
-            log.info("应用名称：{}", appName);
-            app.setAppName(appName);
-        } catch (Exception e) {
-            // 3.获取应用名称失败，使用应用初始化提示词的前 12 个字符作为应用名称
-            app.setAppName(initPrompt.substring(0, 12));
-        }
-    }
-
     /**
      * 删除应用
      */
     @Override
-    public boolean deleteApp(Long id, HttpServletRequest request) {
-        // 1.参数和权限校验
-        checkAuthAndParams(id, request);
+    public boolean deleteApp(Long id, User loginUser) {
+        // 1.1. 校验应用是否存在
+        App app = this.getById(id);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR);
+        // 1.2. 权限校验：仅本人或者管理员删除
+        if (!app.getUserId().equals(loginUser.getId()) && !loginUser.getUserRole().equals(UserRoleEnum.ADMIN.getValue())) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+        }
         try {
             // 2.删除数据库记录
-            App app = this.getById(id);
             this.removeById(id);
             // 3.删除项目目录
             String projectDir = String.format("%s/%s_%s", AppConstant.CODE_OUTPUT_ROOT_DIR, app.getCodeGenType(), id);
@@ -314,19 +300,6 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             log.error("删除项目目录失败：{}", e.getMessage());
         }
         return true;
-    }
-
-    private void checkAuthAndParams(Long id, HttpServletRequest request) {
-        // 1. 参数校验
-        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
-        User loginUser = userService.getLoginUser(request);
-        // 2. 校验应用是否存在
-        App app = this.getById(id);
-        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR);
-        // 3. 仅本人或者管理员删除
-        if (!app.getUserId().equals(loginUser.getId()) && !loginUser.getUserRole().equals(UserRoleEnum.ADMIN.getValue())) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
-        }
     }
 
     /**
@@ -359,15 +332,15 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
      * 根据id查询应用
      */
     @Override
-    public AppVO getAppById(Long id, HttpServletRequest request) {
-        // 1.参数和权限校验
-        checkAuthAndParams(id, request);
-        // 2.查询数据库
+    public AppVO getAppById(Long id, User loginUser) {
+        // 1.校验应用是否存在
         App app = this.getById(id);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR);
+        // 2.查询数据库
         AppVO appVO = new AppVO();
         BeanUtil.copyProperties(app, appVO);
         // 3.查询应用创建者
-        UserVO userVO = userService.getUserVO(userService.getLoginUser(request));
+        UserVO userVO = userService.getUserVO(loginUser);
         appVO.setUser(userVO);
         return appVO;
     }

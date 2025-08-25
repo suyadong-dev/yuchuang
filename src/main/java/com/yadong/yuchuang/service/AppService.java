@@ -25,7 +25,7 @@ public interface AppService extends IService<App> {
     /**
      * 删除应用（用户）
      */
-    boolean deleteApp(Long id, HttpServletRequest request);
+    boolean deleteApp(Long id, User loginUser);
 
     /**
      * 更新应用（用户）
@@ -35,7 +35,7 @@ public interface AppService extends IService<App> {
     /**
      * 根据id获取应用详情
      */
-    AppVO getAppById(Long id, HttpServletRequest request);
+    AppVO getAppById(Long id, User loginUser);
 
     /**
      * 分页查询用户的应用列表
